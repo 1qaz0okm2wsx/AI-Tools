@@ -8,6 +8,9 @@ import { logger } from '../../utils/logger.js';
 
 // 默认配置
 const DEFAULT_CONFIG = {
+  // 使用模式：personal（个人模式，性能最大化）| service（服务模式，可调节）
+  usage_mode: 'personal',
+
   // 数据库配置
   database: {
     path: './ai_models.db',
@@ -45,6 +48,50 @@ const DEFAULT_CONFIG = {
     timeout: 10000,
     maxRetries: 3,
     retryDelay: 1000
+  },
+
+  // 性能配置
+  performance: {
+    // 个人模式配置（性能最大化）
+    personal: {
+      rate_limit: {
+        enabled: false,
+        requests_per_minute: -1,
+        requests_per_hour: -1
+      },
+      concurrent_requests: -1, // 无限制
+      cache_enabled: false,
+      cache_ttl: 0,
+      circuit_breaker: {
+        enabled: false,
+        failure_threshold: 0,
+        recovery_timeout: 0
+      },
+      max_tabs: -1, // 无限制
+      session_isolation: false,
+      max_retries: 10, // 更多重试
+      retry_delay: 500 // 更快重试
+    },
+    // 服务模式配置（可调节）
+    service: {
+      rate_limit: {
+        enabled: true,
+        requests_per_minute: 60,
+        requests_per_hour: 1000
+      },
+      concurrent_requests: 5,
+      cache_enabled: true,
+      cache_ttl: 300, // 5分钟
+      circuit_breaker: {
+        enabled: true,
+        failure_threshold: 5,
+        recovery_timeout: 60000 // 1分钟
+      },
+      max_tabs: 10,
+      session_isolation: true,
+      max_retries: 3,
+      retry_delay: 1000
+    }
   }
 };
 
@@ -249,6 +296,91 @@ export class ConfigService {
    */
   getApiConfig() {
     return this.config.api;
+  }
+
+  /**
+   * 获取使用模式
+   */
+  getUsageMode() {
+    return this.config.usage_mode || 'personal';
+  }
+
+  /**
+   * 设置使用模式
+   */
+  setUsageMode(mode) {
+    if (mode !== 'personal' && mode !== 'service') {
+      throw new Error('无效的使用模式，必须是 personal 或 service');
+    }
+    this.config.usage_mode = mode;
+  }
+
+  /**
+   * 获取性能配置
+   */
+  getPerformanceConfig() {
+    const mode = this.getUsageMode();
+    return this.config.performance[mode] || this.config.performance.personal;
+  }
+
+  /**
+   * 获取限流配置
+   */
+  getRateLimitConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return perfConfig.rate_limit;
+  }
+
+  /**
+   * 获取并发配置
+   */
+  getConcurrencyConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return {
+      max_concurrent: perfConfig.concurrent_requests,
+      session_isolation: perfConfig.session_isolation
+    };
+  }
+
+  /**
+   * 获取缓存配置
+   */
+  getCacheConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return {
+      enabled: perfConfig.cache_enabled,
+      ttl: perfConfig.cache_ttl
+    };
+  }
+
+  /**
+   * 获取熔断配置
+   */
+  getCircuitBreakerConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return perfConfig.circuit_breaker;
+  }
+
+  /**
+   * 获取重试配置
+   */
+  getRetryConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return {
+      max_retries: perfConfig.max_retries,
+      retry_delay: perfConfig.retry_delay
+    };
+  }
+
+  /**
+   * 获取浏览器配置
+   */
+  getBrowserConfig() {
+    const perfConfig = this.getPerformanceConfig();
+    return {
+      max_tabs: perfConfig.max_tabs,
+      session_isolation: perfConfig.session_isolation
+    };
   }
 
   /**

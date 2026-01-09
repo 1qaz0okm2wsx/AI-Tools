@@ -62,8 +62,6 @@ router.post('/v1/browser/chat/completions', async (req, res) => {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      uuidv4();
-
       try {
         // 获取锁
         const acquired = await requestManager.acquire(ctx, 60000);

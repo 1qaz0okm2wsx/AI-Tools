@@ -3,6 +3,7 @@
  */
 
 import express from 'express';
+import path from 'path';
 import { DatabaseService } from '../src/services/database/index.js';
 import { logger } from '../src/utils/logger.js';
 

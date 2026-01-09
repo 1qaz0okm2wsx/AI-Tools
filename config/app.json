@@ -1,4 +1,5 @@
 {
+  "usage_mode": "personal",
   "database": {
     "path": "./ai_models.db",
     "pool": {
@@ -27,5 +28,45 @@
     "timeout": 10000,
     "maxRetries": 3,
     "retryDelay": 1000
+  },
+  "performance": {
+    "personal": {
+      "rate_limit": {
+        "enabled": false,
+        "requests_per_minute": -1,
+        "requests_per_hour": -1
+      },
+      "concurrent_requests": -1,
+      "cache_enabled": false,
+      "cache_ttl": 0,
+      "circuit_breaker": {
+        "enabled": false,
+        "failure_threshold": 0,
+        "recovery_timeout": 0
+      },
+      "max_tabs": -1,
+      "session_isolation": false,
+      "max_retries": 10,
+      "retry_delay": 500
+    },
+    "service": {
+      "rate_limit": {
+        "enabled": true,
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000
+      },
+      "concurrent_requests": 5,
+      "cache_enabled": true,
+      "cache_ttl": 300,
+      "circuit_breaker": {
+        "enabled": true,
+        "failure_threshold": 5,
+        "recovery_timeout": 60000
+      },
+      "max_tabs": 10,
+      "session_isolation": true,
+      "max_retries": 3,
+      "retry_delay": 1000
+    }
   }
 }

@@ -23,23 +23,21 @@ router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /**
     const offset = (page - 1) * limit;
 
     // 获取总提供商数
-    // @ts-ignore
-    db.get(`SELECT COUNT(*) as total FROM providers`, (/** @type {Error | null} */ err, /** @type {{ total: number }} */ countResult) => {
+    db.get(`SELECT COUNT(*) as total FROM providers`, (err, countResult) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
 
-        const totalProviders = countResult.total;
+        const totalProviders = countResult?.total || 0;
         const totalPages = Math.ceil(totalProviders / limit);
 
         // 获取当前页的提供商数据
-        // @ts-ignore
         db.all(`
             SELECT id, name, url, api_key, created_at
             FROM providers
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
-        `, [limit, offset], (/** @type {Error | null} */ err, /** @type {import('../src/types/index.js').Provider[]} */ providers) => {
+        `, [limit, offset], (err, providers) => {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
@@ -68,13 +66,12 @@ router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /**
 
             // 为每个提供商获取模型 - 获取完整的模型信息
             for (const provider of providers) {
-                // @ts-ignore
                 db.all(`
                     SELECT model_name, model_id, description, category, context_window, capabilities
                     FROM models
                     WHERE provider_id = ?
                     ORDER BY model_name
-                `, [provider.id], (/** @type {Error | null} */ err, /** @type {import('../src/types/index.js').Model[]} */ models) => {
+                `, [provider.id], (err, models) => {
                     if (err) {
                         logger.error(`获取提供商 ${provider.name} 的模型失败:`, err.message);
                         models = [];

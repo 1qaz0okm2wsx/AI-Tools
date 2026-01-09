@@ -24,6 +24,7 @@ import configService from './src/services/config/index.js';
 import memoryManager from './memory_manager.js';
 import apiChecker from './api_checker.js';
 import { oauthManager } from './src/services/oauthManager.js';
+import { errorMiddleware, notFoundHandler } from './src/middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,13 +75,11 @@ if (loggingConfig?.level) {
 const dbPool = new DatabasePool(dbConfig.path, dbConfig.pool);
 
 // 获取主数据库连接
-/** @type {any} */
-let db;
+/** @type {import('sqlite3').Database | null} */
+let db = null;
 await dbPool.acquire().then(({ db: dbConnection }) => {
   db = dbConnection;
-  // @ts-ignore
   global.db = db;
-  // @ts-ignore
   global.dbPool = dbPool;
 
   app.locals.db = db;
@@ -90,7 +89,7 @@ await dbPool.acquire().then(({ db: dbConnection }) => {
   dbPool.startCleanup();
 
   logger.info('✅ 数据库连接池已初始化');
-}).catch(/** @type {any} */ error => {
+}).catch((error) => {
   logger.error('❌ 数据库连接池初始化失败:', error);
   process.exit(1);
 });
@@ -188,6 +187,9 @@ import apiGatewayRouter from './routes/api_gateway.js';
 import cookieManagerRouter from './routes/cookie-manager.js';
 import apiDocsRouter from './routes/api_docs.js';
 import oauthRouter from './routes/oauth.js';
+import configApiRouter from './routes/config_api.js';
+import batchApiRouter from './routes/batch_api.js';
+import monitoringApiRouter from './routes/monitoring_api.js';
 
 // 注册API路由
 async function registerRoutes() {
@@ -228,6 +230,9 @@ async function registerRoutes() {
         app.use('/', cookieManagerRouter);
         app.use('/', oauthRouter);
         app.use('/', apiDocsRouter);
+        app.use('/', configApiRouter);
+        app.use('/', batchApiRouter);
+        app.use('/', monitoringApiRouter);
 
         logger.info('✅ API路由已加载');
     } catch (error) {
@@ -314,29 +319,10 @@ async function startServer() {
     }
 
     // 错误处理中间件 - 必须在所有路由之后
-    app.use((/** @type {any} */ err, /** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ _next) => {
-        logger.error('未处理的错误:', err);
-        res.status(500).json({
-            error: {
-                message: '服务器内部错误',
-                type: 'internal_error'
-            }
-        });
-    });
+    app.use(errorMiddleware);
 
     // 404 处理 - 必须在所有路由之后
-    /**
-     * @param {any} req
-     * @param {any} res
-     */
-    app.use((req, res) => {
-        res.status(404).json({
-            error: {
-                message: '接口不存在',
-                path: req.path
-            }
-        });
-    });
+    app.use(notFoundHandler);
     
     app.listen(PORT, () => {
         logger.info(`
