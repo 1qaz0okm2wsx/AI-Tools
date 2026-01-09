@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>额度与使用统计 - AI模型管理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .header-section { background: var(--primary-gradient); color: white; padding: 40px 0; margin-bottom: 30px; border-radius: 0 0 20px 20px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">AI模型管理工具</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/billing">额度统计</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="header-section">
+        <div class="container text-center">
+            <h1><i class="bi bi-wallet2"></i> 额度与使用情况</h1>
+            <p class="lead">监控各模型、各渠道的 Token 消耗与成本</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">使用详情</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>模型 ID</th>
+                                    <th>累计 Token</th>
+                                    <th>预估成本 ($)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billingTable">
+                                <tr><td colspan="4" class="text-center">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/v1/dashboard/billing/usage')
+                .then(res => res.json())
+                .then(result => {
+                    const tbody = document.getElementById('billingTable');
+                    tbody.innerHTML = '';
+                    if (result.data && result.data.length > 0) {
+                        result.data.forEach(row => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><code>${row.model_id}</code></td>
+                                <td>${row.tokens.toLocaleString()}</td>
+                                <td>$${row.total_cost.toFixed(4)}</td>
+                                <td><a href="/logs?model=${row.model_id}" class="btn btn-sm btn-outline-primary">查看日志</a></td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无使用记录</td></tr>';
+                    }
+                });
+        });
+    </script>
+</body>
+</html>

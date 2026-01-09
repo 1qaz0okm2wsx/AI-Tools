@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<%
+// 如果savedForm未定义，创建一个空对象
+if (typeof savedForm === 'undefined') {
+    savedForm = {};
+}
+%>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑AI服务提供商 - AI模型管理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #13B497 0%, #59D4A8 100%);
+            --warning-gradient: linear-gradient(135deg, #FFB347 0%, #FFCC33 100%);
+            --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 0;
+        }
+
+        .form-container {
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .form-container:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .form-header i {
+            font-size: 3rem;
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .form-header h2 {
+            background: var(--primary-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-label i {
+            margin-right: 8px;
+            color: #764ba2;
+        }
+
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .form-control:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 15px;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #6c757d;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-success {
+            background: var(--success-gradient);
+            color: white;
+        }
+
+        .alert-danger {
+            background: var(--secondary-gradient);
+            color: white;
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <!-- 显示错误消息 -->
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% } %>
+
+            <!-- 显示成功消息 -->
+            <% if (typeof success !== 'undefined' && success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle-fill"></i> <%= success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <% } %>
+
+            <div class="form-header">
+                <i class="bi bi-pencil-square"></i>
+                <h2>编辑AI服务提供商</h2>
+            </div>
+
+            <form action="/edit-provider/<%= provider.id %>" method="POST">
+                <input type="hidden" name="id" value="<%= provider.id %>">
+
+                <div class="mb-3" style="display: none;">
+                    <label for="name" class="form-label">提供商名称</label>
+                    <input type="text" class="form-control" id="name" name="name" required
+                           value="<%= provider.name %>"
+                           placeholder="例如: OpenAI, Anthropic, Google AI等">
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="website" class="form-label"><i class="bi bi-globe"></i> 官方网站</label>
+                        <input type="url" class="form-control" id="website" name="website"
+                               value="<%= provider.website || '' %>"
+                               placeholder="https://example.com">
+                        <div class="form-text">用于查看文档和注册</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="url" class="form-label"><i class="bi bi-link-45deg"></i> API接口地址</label>
+                        <input type="url" class="form-control" id="url" name="url" required
+                               value="<%= provider.url %>"
+                               placeholder="https://api.example.com/api/v1">
+                        <div class="form-text">只需填写到 /v1，系统会自动添加后续路径</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold"><i class="bi bi-link-45deg"></i> 其他API接口地址</label>
+                    <div class="form-text mb-2">您可以添加多个备用接口地址（例如代理地址），系统在主地址失效时会尝试这些地址。</div>
+                    <div id="endpointsContainer">
+                        <!-- 现有接口将通过JavaScript动态加载 -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addNewEndpointField()">
+                        <i class="bi bi-plus"></i> 添加新接口
+                    </button>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0 fw-bold"><i class="bi bi-key"></i> API密钥</label>
+                        <a href="/provider/<%= provider.id %>/api-keys" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-key"></i> 管理所有密钥
+                        </a>
+                    </div>
+                    <div class="form-text mb-2">您可以添加多个API密钥，系统将自动轮询使用。</div>
+                    <div id="apiKeysContainer">
+                        <!-- 现有密钥将通过JavaScript动态加载 -->
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addNewApiKeyField()">
+                        <i class="bi bi-plus"></i> 添加新密钥
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <a href="/" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> 返回
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> 保存更改
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 从服务器获取提供商的API密钥
+        fetch(`/provider/<%= provider.id %>/api-keys-json`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('apiKeysContainer');
+
+                // 如果没有密钥，添加一个空密钥字段
+                if (data.apiKeys.length === 0) {
+                    addNewApiKeyField();
+                    return;
+                }
+
+                // 添加现有密钥
+                data.apiKeys.forEach((key, index) => {
+                    addApiKeyField(key.key_name, key.api_key, key.id, key.is_default);
+                });
+
+                // 如果没有默认密钥，将第一个设为默认
+                if (!data.apiKeys.some(k => k.is_default)) {
+                    const firstDefaultCheckbox = container.querySelector('input[name="defaultKey"]');
+                    if (firstDefaultCheckbox) {
+                        firstDefaultCheckbox.checked = true;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('获取API密钥失败:', error);
+                // 添加一个空密钥字段作为备用
+                addNewApiKeyField();
+            });
+
+        // 从服务器获取提供商的API接口
+        fetch(`/provider/<%= provider.id %>/endpoints-json`)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('endpointsContainer');
+
+                // 添加现有接口
+                if (data.endpoints && data.endpoints.length > 0) {
+                    data.endpoints.forEach((endpoint, index) => {
+                        addEndpointField(endpoint.endpoint_url, endpoint.endpoint_name, endpoint.id);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('获取API接口失败:', error);
+            });
+
+        let keyCount = 0;
+        let endpointCount = 0;
+
+        function addEndpointField(url, name, id) {
+            endpointCount++;
+            const container = document.getElementById('endpointsContainer');
+            const div = document.createElement('div');
+            div.className = 'card mb-3 endpoint-card';
+            div.innerHTML = `
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">接口 ${endpointCount}</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3" style="display: none;">
+                        <label class="form-label">接口名称</label>
+                        <input type="text" class="form-control" name="endpointNames[]" value="${name || '接口'}" placeholder="例如: 代理接口1">
+                    </div>
+                    <div class="input-group">
+                        <input type="url" class="form-control" name="endpoints[]" value="${url || ''}" placeholder="https://api.example.com/v1">
+                        <input type="hidden" name="endpointIds[]" value="${id || ''}">
+                        <button class="btn btn-outline-danger" type="button" onclick="removeEndpoint(this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function addNewEndpointField() {
+            addEndpointField('', '', '');
+        }
+
+        function removeEndpoint(btn) {
+            const card = btn.closest('.endpoint-card');
+            card.remove();
+            updateEndpointNumbers();
+        }
+
+        function updateEndpointNumbers() {
+            const cards = document.querySelectorAll('.endpoint-card');
+            endpointCount = cards.length;
+            cards.forEach((card, index) => {
+                const header = card.querySelector('.card-header span');
+                if (header) {
+                    header.textContent = `接口 ${index + 1}`;
+                }
+            });
+        }
+
+        function addApiKeyField(name, value, id, isDefault) {
+            keyCount++;
+            const container = document.getElementById('apiKeysContainer');
+            const div = document.createElement('div');
+            div.className = 'card mb-3 api-key-card';
+            div.innerHTML = `
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">密钥 ${keyCount}</span>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="defaultKey${keyCount-1}" name="defaultKey" value="${keyCount-1}" ${isDefault ? 'checked' : ''}>
+                        <label class="form-check-label" for="defaultKey${keyCount-1}">默认密钥</label>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3" style="display: none;">
+                        <label class="form-label">密钥名称</label>
+                        <input type="text" class="form-control" name="keyNames[]" value="${name || '密钥'}" placeholder="例如: 主密钥、备用密钥等">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="apiKeys[]" value="${value || ''}" placeholder="输入API密钥">
+                        <input type="hidden" name="keyIds[]" value="${id || ''}">
+                        <button class="btn btn-outline-secondary" type="button" onclick="toggleVisibility(this)">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" type="button" onclick="removeApiKey(this)" ${id ? '' : 'disabled'}>
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            updateRemoveButtons();
+        }
+
+        function addNewApiKeyField() {
+            addApiKeyField('', '', '', false);
+        }
+
+        function removeApiKey(btn) {
+            const container = document.getElementById('apiKeysContainer');
+            if (container.children.length > 1) {
+                const card = btn.closest('.api-key-card');
+                const isDefault = card.querySelector('input[name="defaultKey"]').checked;
+
+                // 如果删除的是默认密钥，将第一个密钥设为默认
+                if (isDefault && container.children.length > 1) {
+                    const firstCard = container.querySelector('.api-key-card');
+                    if (firstCard && firstCard !== card) {
+                        firstCard.querySelector('input[name="defaultKey"]').checked = true;
+                    }
+                }
+
+                card.remove();
+                updateRemoveButtons();
+                updateKeyNumbers();
+            }
+        }
+
+        function updateKeyNumbers() {
+            const cards = document.querySelectorAll('.api-key-card');
+            cards.forEach((card, index) => {
+                const header = card.querySelector('.card-header span');
+                if (header) {
+                    header.textContent = `密钥 ${index + 1}`;
+                }
+            });
+        }
+
+        function updateRemoveButtons() {
+            const container = document.getElementById('apiKeysContainer');
+            const buttons = container.querySelectorAll('.btn-outline-danger');
+            buttons.forEach(btn => {
+                const keyIdInput = btn.closest('.api-key-card').querySelector('input[name="keyIds[]"]');
+                // 只有新添加的密钥（没有ID）才能被删除
+                btn.disabled = keyIdInput && keyIdInput.value !== '';
+            });
+
+            // 确保只有一个默认密钥被选中
+            const defaultCheckboxes = container.querySelectorAll('input[name="defaultKey"]');
+            let hasChecked = false;
+            defaultCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    if (hasChecked) {
+                        checkbox.checked = false;
+                    } else {
+                        hasChecked = true;
+                    }
+                }
+            });
+
+            // 如果没有默认密钥被选中，选中第一个
+            if (!hasChecked && defaultCheckboxes.length > 0) {
+                defaultCheckboxes[0].checked = true;
+            }
+        }
+
+        function toggleVisibility(btn) {
+            // 在输入组中查找密码输入框
+            const inputGroup = btn.closest('.input-group');
+            const input = inputGroup.querySelector('input[type="password"], input[type="text"]');
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        }
+    </script>
+    
+    <script>
+    // 保存表单数据到localStorage
+    document.addEventListener('DOMContentLoaded', function() {
+        // 从localStorage恢复表单数据
+        const savedFormData = localStorage.getItem('editProviderFormData');
+        if (savedFormData) {
+            const formData = JSON.parse(savedFormData);
+            
+            // 只填充空字段
+            if (!document.getElementById('name').value && formData.name) document.getElementById('name').value = formData.name;
+            if (!document.getElementById('url').value && formData.url) document.getElementById('url').value = formData.url;
+            if (!document.getElementById('website').value && formData.website) document.getElementById('website').value = formData.website;
+        }
+        
+        // 在表单提交前保存数据
+        const form = document.querySelector('form[action^="/edit-provider"]');
+        if (form) {
+            form.addEventListener('submit', function() {
+                const formData = {
+                    name: document.getElementById('name').value,
+                    url: document.getElementById('url').value,
+                    website: document.getElementById('website').value
+                };
+                localStorage.setItem('editProviderFormData', JSON.stringify(formData));
+            });
+        }
+    });
+    </script>
+</body>
+</html>

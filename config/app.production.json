@@ -1,0 +1,38 @@
+{
+  "database": {
+    "path": "./ai_models.db",
+    "pool": {
+      "maxConnections": 20,
+      "idleTimeout": 600000,
+      "acquireTimeout": 10000
+    }
+  },
+  "browser": {
+    "pool": {
+      "maxInstances": 5,
+      "idleTimeout": 600000,
+      "acquireTimeout": 10000
+    }
+  },
+  "server": {
+    "port": 3000,
+    "host": "0.0.0.0"
+  },
+  "memory": {
+    "autoCleanup": true,
+    "cleanupInterval": 60000,
+    "warningThreshold": 1000,
+    "gcEnabled": true
+  },
+  "logging": {
+    "level": "warn",
+    "maxFiles": 30,
+    "maxSize": "50m",
+    "directory": "./logs"
+  },
+  "api": {
+    "timeout": 30000,
+    "maxRetries": 5,
+    "retryDelay": 2000
+  }
+}

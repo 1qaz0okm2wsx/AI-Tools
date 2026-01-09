@@ -1,0 +1,407 @@
+{
+  "_global": {
+    "selectors": {},
+    "workflow": [],
+    "stealth": false
+  },
+  "aistudio.google.com": {
+    "url": "https://aistudio.google.com",
+    "selectors": {
+      "input_box": ".ql-editor.new-input-ui",
+      "send_btn": "button[aria-label=\"Run\"]",
+      "result_container": ".chat-turn-container.model ms-prompt-chunk:not(:has(ms-thought-chunk)) ms-cmark-node.cmark-node",
+      "new_chat_btn": "button[aria-label=\"New chat\"]",
+      "confirm_btn": "button.ms-button-primary[type=\"button\"]"
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": 0.5
+      },
+      {
+        "action": "CLICK",
+        "target": "confirm_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": 0.1
+      },
+      {
+        "action": "CLICK",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": 0.1
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "lmarena.ai": {
+    "url": "https://lmarena.ai",
+    "selectors": {
+      "input_box": "textarea[name=\"message\"]",
+      "send_btn": "button[type=\"submit\"]",
+      "result_container": ".no-scrollbar .prose",
+      "new_chat_btn": "a[href*=\"/c/new\"]",
+      "message_wrapper": null,
+      "generating_indicator": null
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "KEY_PRESS",
+        "target": "Enter",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": true
+  },
+  "grok.com": {
+    "url": "https://grok.com",
+    "selectors": {
+      "input_box": "div.tiptap[contenteditable=\"true\"]",
+      "send_btn": "button[aria-label=\"提交\"]",
+      "result_container": "div[id^=\"response-\"].items-start .response-content-markdown",
+      "new_chat_btn": "a[aria-label=\"主页\"]",
+      "message_wrapper": "div[id^=\"response-\"]",
+      "generating_indicator": null
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "KEY_PRESS",
+        "target": "Enter",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "chatgpt.com": {
+    "url": "https://chatgpt.com",
+    "selectors": {
+      "input_box": "#prompt-textarea",
+      "send_btn": "[data-testid=\"send-button\"]",
+      "result_container": ".agent-turn .markdown",
+      "new_chat_btn": "[data-testid=\"create-new-chat-button\"]",
+      "message_wrapper": "article[data-testid^=\"conversation-turn-\"]",
+      "generating_indicator": null
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "gemini.google.com": {
+    "selectors": {
+      "input_box": "rich-textarea .ql-editor[contenteditable=\"true\"][role=\"textbox\"]",
+      "send_btn": "button.send-button",
+      "result_container": ".markdown-main-panel",
+      "new_chat_btn": "button.temp-chat-button",
+      "message_wrapper": null,
+      "generating_indicator": null
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": 0.5
+      },
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "chat.deepseek.com": {
+    "url": "https://chat.deepseek.com",
+    "selectors": {
+      "input_box": "textarea",
+      "send_btn": "div.bf38813a > div > div[role='button']",
+      "result_container": "css:div.ds-markdown",
+      "new_chat_btn": "div._5a8ac7a",
+      "generating_indicator": "css:._7436101.bcc55ca1"
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "www.doubao.com": {
+    "url": "https://www.doubao.com",
+    "selectors": {
+      "input_box": "textarea[data-testid=\"chat_input_input\"]",
+      "send_btn": "button[data-testid=\"chat_input_send_button\"]",
+      "result_container": "[data-testid=\"message_content\"]",
+      "new_chat_btn": "[data-testid=\"create_conversation_button\"]"
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "KEY_PRESS",
+        "target": "Enter",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "claude.ai": {
+    "url": "https://claude.ai",
+    "selectors": {
+      "input_box": "[contenteditable=\"true\"][data-placeholder]",
+      "send_btn": "button[aria-label=\"Send message\"]",
+      "result_container": "[data-is-streaming] .font-claude-message",
+      "new_chat_btn": "button[data-testid=\"new-chat-button\"]",
+      "message_wrapper": "[data-is-streaming]"
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "0.5"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  }
+}

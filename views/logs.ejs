@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>操作日志 - AI模型管理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            padding-top: 20px;
+        }
+        .log-entry {
+            border-left: 4px solid;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background-color: white;
+            border-radius: 0 5px 5px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .log-entry.success {
+            border-left-color: #198754;
+        }
+        .log-entry.error {
+            border-left-color: #dc3545;
+        }
+        .log-entry.warning {
+            border-left-color: #ffc107;
+        }
+        .log-entry.info {
+            border-left-color: #0dcaf0;
+        }
+        .log-meta {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .filter-section {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .status-badge {
+            font-size: 0.7rem;
+        }
+        .operation-type-badge {
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-journal-text"></i> 操作日志</h1>
+            <a href="/" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> 返回首页
+            </a>
+        </div>
+
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-6">
+                    <form method="get" action="/logs">
+                        <div class="input-group">
+                            <select class="form-select" name="type" id="operationType">
+                                <option value="">所有操作类型</option>
+                                <% operationTypes.forEach(type => { %>
+                                    <option value="<%= type.operation_type %>" <%= currentType === type.operation_type ? 'selected' : '' %>>
+                                        <%= type.operation_type %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                            <button class="btn btn-primary" type="submit">
+                                <i class="bi bi-funnel"></i> 筛选
+                            </button>
+                            <% if (currentType) { %>
+                                <a href="/logs" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> 清除
+                                </a>
+                            <% } %>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="text-muted">
+                        共 <%= pagination.totalItems %> 条记录
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日志列表 -->
+        <% if (logs.length === 0) { %>
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                <h3>暂无日志记录</h3>
+                <p>系统还没有任何操作日志</p>
+            </div>
+        <% } else { %>
+            <% logs.forEach(log => { %>
+                <div class="log-entry <%= log.status %>">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge operation-type-badge bg-primary me-2"><%= log.operation_type %></span>
+                                <span class="badge status-badge bg-<%= log.status === 'success' ? 'success' : (log.status === 'error' ? 'danger' : 'secondary') %> me-2">
+                                    <%= log.status === 'success' ? '成功' : (log.status === 'error' ? '失败' : log.status) %>
+                                </span>
+                                <strong><%= log.target_name || log.target_type %></strong>
+                            </div>
+                            <div class="log-details">
+                                <%= log.details || '无详细信息' %>
+                            </div>
+                            <div class="log-meta mt-1">
+                                <i class="bi bi-clock"></i> <%= new Date(log.created_at).toLocaleString('zh-CN') %>
+                                <% if (log.user_ip) { %>
+                                    <span class="ms-3"><i class="bi bi-globe"></i> IP: <%= log.user_ip %></span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">ID: <%= log.id %></small>
+                            <% if (log.user_agent) { %>
+                                <div class="text-muted" style="font-size: 0.7rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= log.user_agent %>">
+                                    <i class="bi bi-browser-chrome"></i> <%= log.user_agent %>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        <% } %>
+
+        <!-- 分页导航 -->
+        <% if (pagination && pagination.totalPages > 1) { %>
+            <nav aria-label="日志分页">
+                <ul class="pagination justify-content-center mt-4">
+                    <% if (pagination.hasPrevPage) { %>
+                        <li class="page-item">
+                            <a class="page-link" href="?page=<%= pagination.prevPage %><%= currentType ? '&type=' + currentType : '' %>" aria-label="上一页">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    <% } else { %>
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-hidden="true">&laquo;</span>
+                        </li>
+                    <% } %>
+
+                    <!-- 页码 -->
+                    <% for (let i = 1; i <= pagination.totalPages; i++) { %>
+                        <% if (i === pagination.currentPage) { %>
+                            <li class="page-item active" aria-current="page">
+                                <span class="page-link"><%= i %></span>
+                            </li>
+                        <% } else { %>
+                            <li class="page-item">
+                                <a class="page-link" href="?page=<%= i %><%= currentType ? '&type=' + currentType : '' %>"><%= i %></a>
+                            </li>
+                        <% } %>
+                    <% } %>
+
+                    <% if (pagination.hasNextPage) { %>
+                        <li class="page-item">
+                            <a class="page-link" href="?page=<%= pagination.nextPage %><%= currentType ? '&type=' + currentType : '' %>" aria-label="下一页">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    <% } else { %>
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-hidden="true">&raquo;</span>
+                        </li>
+                    <% } %>
+                </ul>
+
+                <div class="text-center text-muted mt-2">
+                    显示第 <%= (pagination.currentPage - 1) * 20 + 1 %> - 
+                    <%= Math.min(pagination.currentPage * 20, pagination.totalItems) %> 条，
+                    共 <%= pagination.totalItems %> 条记录
+                </div>
+            </nav>
+        <% } %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

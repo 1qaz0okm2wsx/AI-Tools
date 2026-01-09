@@ -1,0 +1,376 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API密钥统计 - <%= provider.name %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stats-card {
+            transition: transform 0.2s;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        .key-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        .masked-key {
+            font-family: monospace;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+        }
+        .stats-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        .active-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .active {
+            background-color: #28a745;
+        }
+        .inactive {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">AI模型管理工具</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">提供商列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs">操作日志</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><%= provider.name %> - API密钥统计</h2>
+            <div>
+                <button class="btn btn-outline-secondary me-2" onclick="refreshStats()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新统计
+                </button>
+                <a href="/" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+
+        <!-- 提供商信息 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">提供商信息</h5>
+                <p class="card-text">
+                    <strong>名称:</strong> <%= provider.name %><br>
+                    <strong>URL:</strong> <a href="<%= provider.url %>" target="_blank"><%= provider.url %></a>
+                </p>
+            </div>
+        </div>
+
+        <!-- API密钥列表 -->
+        <div class="row mb-4">
+            <% if (apiKeys.length === 0) { %>
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 该提供商尚未添加任何API密钥。
+                    </div>
+                </div>
+            <% } else { %>
+                <% apiKeys.forEach(function(key) { %>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card stats-card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span class="key-name"><%= key.key_name %></span>
+                                <span class="active-indicator <%= key.is_active ? 'active' : 'inactive' %>"></span>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">
+                                    <strong>API密钥:</strong><br>
+                                    <code class="masked-key"><%= key.masked_key %></code>
+                                </p>
+                                <p class="card-text">
+                                    <small class="text-muted">创建时间: <%= key.formatted_time %></small>
+                                </p>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge <%= key.is_active ? 'bg-success' : 'bg-secondary' %>">
+                                        <%= key.is_active ? '启用' : '禁用' %>
+                                    </span>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showKeyDetail(<%= key.id %>)">
+                                        <i class="bi bi-graph-up"></i> 查看统计
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+
+        <!-- 统计图表 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">API密钥使用统计</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="stats-value" id="totalRequests">-</div>
+                        <div class="stats-label">总请求数</div>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="stats-value" id="avgResponseTime">-</div>
+                        <div class="stats-label">平均响应时间 (ms)</div>
+                    </div>
+                    <div class="col-md-4 text-center mb-4">
+                        <div class="stats-value" id="successRate">-</div>
+                        <div class="stats-label">成功率 (%)</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="statsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 密钥详情模态框 -->
+    <div class="modal fade" id="keyDetailModal" tabindex="-1" aria-labelledby="keyDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="keyDetailModalLabel">API密钥详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="keyDetailContent">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示 -->
+    <% if (typeof success !== 'undefined') { %>
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-success text-white">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong class="me-auto">成功</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    <%= success %>
+                </div>
+            </div>
+        </div>
+    <% } %>
+
+    <% if (typeof error !== 'undefined') { %>
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong class="me-auto">错误</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    <%= error %>
+                </div>
+            </div>
+        </div>
+    <% } %>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let statsChart = null;
+
+        // 刷新统计数据
+        function refreshStats() {
+            fetch(`/provider/<%= provider.id %>/key-stats/api`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    updateSummaryStats(data.summary);
+                    updateChart(data.keys);
+                })
+                .catch(error => {
+                    console.error('获取统计数据失败:', error);
+                    alert('获取统计数据失败: ' + error.message);
+                });
+        }
+
+        // 更新摘要统计
+        function updateSummaryStats(summary) {
+            document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
+            document.getElementById('avgResponseTime').textContent = Math.round(summary.avgResponseTime || 0);
+            document.getElementById('successRate').textContent = Math.round(summary.avgSuccessRate * 100) || 0;
+        }
+
+        // 更新图表
+        function updateChart(keys) {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+
+            // 准备数据
+            const labels = keys.map(key => key.name);
+            const successData = keys.map(key => key.successCount);
+            const errorData = keys.map(key => key.errorCount);
+            const responseTimeData = keys.map(key => key.avgResponseTime);
+
+            // 销毁旧图表
+            if (statsChart) {
+                statsChart.destroy();
+            }
+
+            // 创建新图表
+            statsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '成功请求',
+                            data: successData,
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '失败请求',
+                            data: errorData,
+                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(tooltipItems) {
+                                    const index = tooltipItems[0].dataIndex;
+                                    const responseTime = responseTimeData[index];
+                                    return `平均响应时间: ${Math.round(responseTime)}ms`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 显示密钥详情
+        function showKeyDetail(keyId) {
+            const modal = new bootstrap.Modal(document.getElementById('keyDetailModal'));
+
+            // 显示加载中
+            document.getElementById('keyDetailContent').innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                </div>
+            `;
+
+            modal.show();
+
+            // 获取密钥详细统计
+            fetch(`/provider/<%= provider.id %>/key-stats/api`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    const key = data.keys.find(k => k.id === keyId);
+                    if (!key) {
+                        throw new Error('未找到密钥信息');
+                    }
+
+                    // 显示密钥详情
+                    document.getElementById('keyDetailContent').innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>基本信息</h6>
+                                <p><strong>密钥名称:</strong> ${key.name}</p>
+                                <p><strong>状态:</strong> ${key.isActive ? '<span class="badge bg-success">活跃</span>' : '<span class="badge bg-secondary">非活跃</span>'}</p>
+                                <p><strong>成功率:</strong> ${Math.round(key.successRate * 100)}%</p>
+                                <p><strong>平均响应时间:</strong> ${Math.round(key.avgResponseTime)}ms</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>请求统计</h6>
+                                <p><strong>成功请求:</strong> ${key.successCount}</p>
+                                <p><strong>失败请求:</strong> ${key.errorCount}</p>
+                                <p><strong>总请求数:</strong> ${key.successCount + key.errorCount}</p>
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error('获取密钥详情失败:', error);
+                    document.getElementById('keyDetailContent').innerHTML = `
+                        <div class="alert alert-danger">
+                            获取密钥详情失败: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // 页面加载完成后刷新统计数据
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStats();
+
+            // 设置定时刷新
+            setInterval(refreshStats, 30000); // 每30秒刷新一次
+        });
+    </script>
+</body>
+</html>

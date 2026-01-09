@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浏览器自动化管理 - AI模型管理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .status-dot.connected { background-color: var(--success-color); }
+        .status-dot.disconnected { background-color: var(--danger-color); }
+        .status-dot.unknown { background-color: var(--warning-color); }
+        
+        .site-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .site-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .site-card.active {
+            border-color: var(--primary-color);
+            background-color: #f0f7ff;
+        }
+        .site-card .edit-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            padding: 2px 5px;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .site-card:hover .edit-btn {
+            opacity: 1;
+        }
+        
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .log-entry {
+            margin-bottom: 0.25rem;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+        }
+        .log-entry.info { color: #4fc1ff; }
+        .log-entry.warn { color: #dcdcaa; }
+        .log-entry.error { color: #f48771; }
+        .log-entry.debug { color: #9cdcfe; }
+        
+        .cookie-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* 工作流编辑器样式 */
+        .workflow-step {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .workflow-step:hover {
+            background: #e9ecef;
+        }
+        .workflow-step .step-handle {
+            cursor: grab;
+            color: #6c757d;
+        }
+        .workflow-step .step-content {
+            flex: 1;
+        }
+        .workflow-step .step-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+        .workflow-step .action-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        /* 选择器编辑器样式 */
+        .selector-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .selector-item:last-child {
+            border-bottom: none;
+        }
+        .selector-item .selector-key {
+            width: 120px;
+            font-weight: 500;
+        }
+        .selector-item .selector-value {
+            flex: 1;
+        }
+        
+        /* Tab 样式增强 */
+        .nav-tabs .nav-link {
+            color: #6c757d;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 500;
+        }
+        
+        /* 配置编辑器JSON样式 */
+        .json-editor {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            min-height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-robot"></i> AI模型管理工具
+            </a>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/"><i class="bi bi-house"></i> 首页</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/browser"><i class="bi bi-browser-chrome"></i> 浏览器自动化</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logs"><i class="bi bi-journal-text"></i> 日志</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- 左侧：状态和控制 -->
+            <div class="col-md-4">
+                <!-- 浏览器状态卡片 -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-browser-chrome"></i> 浏览器状态</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="refreshStatus()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="browserStatus">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="status-badge">
+                                    <span class="status-dot unknown" id="statusDot"></span>
+                                    <span id="statusText">检查中...</span>
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">当前页面:</small>
+                                <div id="currentUrl" class="text-truncate">-</div>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">页面标题:</small>
+                                <div id="currentTitle">-</div>
+                            </div>
+                            <div>
+                                <small class="text-muted">登录状态:</small>
+                                <span id="loginStatus" class="badge bg-secondary">未知</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 网站选择卡片 -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-globe"></i> 支持的网站</h5>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addSiteModal">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="sitesList" class="row g-2">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cookie管理卡片 -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-cookie"></i> Cookie管理</h5>
+                        <button class="btn btn-sm btn-success" onclick="saveCookies()">
+                            <i class="bi bi-save"></i> 保存当前
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="cookiesList" class="cookie-list">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间：聊天测试 -->
+            <div class="col-md-5">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-chat-dots"></i> API测试</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                            <label class="form-label">选择模型</label>
+                            <select class="form-select" id="modelSelect">
+                                <option value="web-browser">web-browser (默认)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 flex-grow-1">
+                            <label class="form-label">消息内容</label>
+                            <textarea class="form-control" id="messageInput" rows="4" placeholder="输入测试消息...">你好，请介绍一下自己</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="streamMode" checked>
+                                <label class="form-check-label" for="streamMode">流式响应</label>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="sendTestMessage()" id="sendBtn">
+                                <i class="bi bi-send"></i> 发送测试
+                            </button>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label">响应结果</label>
+                            <div class="border rounded p-3 bg-light" style="min-height: 200px; max-height: 300px; overflow-y: auto;">
+                                <pre id="responseOutput" class="mb-0" style="white-space: pre-wrap;">等待发送...</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：日志 -->
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-terminal"></i> 实时日志</h5>
+                        <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-container" id="logContainer">
+                            <div class="log-entry info">[系统] 日志监控已启动...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加站点模态框 -->
+    <div class="modal fade" id="addSiteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加新站点</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addSiteForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">站点域名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newSiteDomain" placeholder="例如: example.com" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">站点URL</label>
+                                <input type="text" class="form-control" id="newSiteUrl" placeholder="例如: https://example.com">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="newSiteStealth">
+                                <label class="form-check-label" for="newSiteStealth">启用隐身模式（模拟人类操作）</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="addNewSite()">添加站点</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑站点模态框 -->
+    <div class="modal fade" id="editSiteModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-gear"></i> 编辑站点配置: <span id="editSiteDomain"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="editTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#selectorsTab">
+                                <i class="bi bi-crosshair"></i> 选择器
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#workflowTab">
+                                <i class="bi bi-diagram-3"></i> 工作流
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#jsonTab">
+                                <i class="bi bi-code-slash"></i> JSON
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <!-- 选择器Tab -->
+                        <div class="tab-pane fade show active" id="selectorsTab">
+                            <div class="mb-3">
+                                <p class="text-muted small">定义页面元素的CSS选择器，用于自动化操作</p>
+                            </div>
+                            <div id="selectorsList" class="border rounded">
+                                <!-- 动态加载 -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary mt-2" onclick="addSelector()">
+                                <i class="bi bi-plus"></i> 添加选择器
+                            </button>
+                        </div>
+                        <!-- 工作流Tab -->
+                        <div class="tab-pane fade" id="workflowTab">
+                            <div class="mb-3">
+                                <p class="text-muted small">定义自动化操作步骤的执行顺序</p>
+                            </div>
+                            <div id="workflowSteps">
+                                <!-- 动态加载 -->
+                            </div>
+                            <div class="mt-3">
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-plus"></i> 添加步骤
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="addWorkflowStep('CLICK')"><i class="bi bi-cursor"></i> 点击 (CLICK)</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="addWorkflowStep('FILL_INPUT')"><i class="bi bi-input-cursor-text"></i> 填充输入 (FILL_INPUT)</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="addWorkflowStep('WAIT')"><i class="bi bi-hourglass-split"></i> 等待 (WAIT)</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="addWorkflowStep('KEY_PRESS')"><i class="bi bi-keyboard"></i> 按键 (KEY_PRESS)</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="addWorkflowStep('STREAM_WAIT')"><i class="bi bi-arrow-repeat"></i> 流式等待 (STREAM_WAIT)</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- JSON Tab -->
+                        <div class="tab-pane fade" id="jsonTab">
+                            <div class="mb-3">
+                                <p class="text-muted small">直接编辑站点配置的JSON数据</p>
+                            </div>
+                            <textarea class="form-control json-editor" id="siteJsonEditor" rows="15"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" onclick="deleteSite()">
+                        <i class="bi bi-trash"></i> 删除站点
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSiteConfig()">
+                        <i class="bi bi-check-lg"></i> 保存配置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let lastLogTimestamp = 0;
+        let logInterval = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshStatus();
+            loadSites();
+            loadCookies();
+            loadModels();
+            startLogPolling();
+        });
+
+        // 刷新浏览器状态
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/v1/browser/health');
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                const currentUrl = document.getElementById('currentUrl');
+                const currentTitle = document.getElementById('currentTitle');
+                const loginStatus = document.getElementById('loginStatus');
+                
+                if (data.browser && data.browser.connected) {
+                    statusDot.className = 'status-dot connected';
+                    statusText.textContent = '已连接';
+                    currentUrl.textContent = data.browser.url || '-';
+                    currentTitle.textContent = data.browser.title || '-';
+                    
+                    if (data.browser.isLoggedIn) {
+                        loginStatus.className = 'badge bg-success';
+                        loginStatus.textContent = '已登录';
+                    } else {
+                        loginStatus.className = 'badge bg-warning';
+                        loginStatus.textContent = '未登录';
+                    }
+                } else {
+                    statusDot.className = 'status-dot disconnected';
+                    statusText.textContent = '未连接';
+                    currentUrl.textContent = '-';
+                    currentTitle.textContent = '-';
+                    loginStatus.className = 'badge bg-secondary';
+                    loginStatus.textContent = '未知';
+                }
+            } catch (error) {
+                document.getElementById('statusDot').className = 'status-dot disconnected';
+                document.getElementById('statusText').textContent = '连接失败';
+            }
+        }
+
+        // 加载支持的网站
+        async function loadSites() {
+            try {
+                const response = await fetch('/api/browser/config');
+                window.sitesConfig = await response.json();
+                
+                const container = document.getElementById('sitesList');
+                container.innerHTML = '';
+                
+                for (const [domain, config] of Object.entries(window.sitesConfig)) {
+                    if (domain === '_global') continue;
+                    
+                    const col = document.createElement('div');
+                    col.className = 'col-6';
+                    col.innerHTML = `
+                        <div class="site-card card p-2 text-center" onclick="openSite('${domain}')">
+                            <button class="btn btn-sm btn-outline-secondary edit-btn" onclick="event.stopPropagation(); editSite('${domain}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <small class="text-truncate">${domain}</small>
+                            ${config.stealth ? '<i class="bi bi-shield-check text-success ms-1" title="隐身模式"></i>' : ''}
+                        </div>
+                    `;
+                    container.appendChild(col);
+                }
+            } catch (error) {
+                console.error('加载网站列表失败:', error);
+            }
+        }
+
+        // 打开网站
+        async function openSite(site) {
+            try {
+                const response = await fetch('/api/browser/open', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ site })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    addLog('info', `已打开网站: ${site}`);
+                    setTimeout(refreshStatus, 2000);
+                } else {
+                    addLog('error', `打开网站失败: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `打开网站出错: ${error.message}`);
+            }
+        }
+
+        // 加载Cookie列表
+        async function loadCookies() {
+            try {
+                const response = await fetch('/api/browser/cookies');
+                const data = await response.json();
+                
+                const container = document.getElementById('cookiesList');
+                container.innerHTML = '';
+                
+                if (data.domains && data.domains.length > 0) {
+                    data.domains.forEach(domain => {
+                        const item = document.createElement('div');
+                        item.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
+                        item.innerHTML = `
+                            <span class="text-truncate">${domain}</span>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCookie('${domain}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        `;
+                        container.appendChild(item);
+                    });
+                } else {
+                    container.innerHTML = '<div class="text-muted text-center p-3">暂无保存的Cookie</div>';
+                }
+            } catch (error) {
+                console.error('加载Cookie列表失败:', error);
+            }
+        }
+
+        // 保存当前Cookie
+        async function saveCookies() {
+            try {
+                const response = await fetch('/api/browser/cookies/save', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    addLog('info', `Cookie已保存: ${result.domain} (${result.count}个)`);
+                    loadCookies();
+                }
+            } catch (error) {
+                addLog('error', `保存Cookie失败: ${error.message}`);
+            }
+        }
+
+        // 删除Cookie
+        async function deleteCookie(domain) {
+            if (!confirm(`确定要删除 ${domain} 的Cookie吗？`)) return;
+            
+            try {
+                await fetch(`/api/browser/cookies/${encodeURIComponent(domain)}`, { method: 'DELETE' });
+                addLog('info', `已删除Cookie: ${domain}`);
+                loadCookies();
+            } catch (error) {
+                addLog('error', `删除Cookie失败: ${error.message}`);
+            }
+        }
+
+        // 加载模型列表
+        async function loadModels() {
+            try {
+                const response = await fetch('/v1/browser/models');
+                const data = await response.json();
+                
+                const select = document.getElementById('modelSelect');
+                select.innerHTML = '';
+                
+                if (data.data) {
+                    data.data.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.id;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载模型列表失败:', error);
+            }
+        }
+
+        // 发送测试消息
+        async function sendTestMessage() {
+            const message = document.getElementById('messageInput').value;
+            const model = document.getElementById('modelSelect').value;
+            const stream = document.getElementById('streamMode').checked;
+            const btn = document.getElementById('sendBtn');
+            const output = document.getElementById('responseOutput');
+            
+            if (!message.trim()) {
+                alert('请输入消息内容');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 发送中...';
+            output.textContent = '';
+            
+            try {
+                const response = await fetch('/v1/browser/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model,
+                        messages: [{ role: 'user', content: message }],
+                        stream
+                    })
+                });
+                
+                if (stream) {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const text = decoder.decode(value);
+                        const lines = text.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (data.choices && data.choices[0].delta?.content) {
+                                        output.textContent += data.choices[0].delta.content;
+                                    }
+                                    if (data.error) {
+                                        output.textContent = `错误: ${data.error.message}`;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                } else {
+                    const data = await response.json();
+                    if (data.choices && data.choices[0]) {
+                        output.textContent = data.choices[0].message.content;
+                    } else if (data.error) {
+                        output.textContent = `错误: ${data.error.message}`;
+                    }
+                }
+            } catch (error) {
+                output.textContent = `请求失败: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-send"></i> 发送测试';
+            }
+        }
+
+        // 日志轮询
+        function startLogPolling() {
+            logInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/browser/logs?since=${lastLogTimestamp}`);
+                    const data = await response.json();
+                    
+                    if (data.logs && data.logs.length > 0) {
+                        data.logs.forEach(log => {
+                            addLogEntry(log);
+                        });
+                        lastLogTimestamp = data.timestamp;
+                    }
+                } catch (error) {
+                    // 忽略轮询错误
+                }
+            }, 2000);
+        }
+
+        function addLogEntry(log) {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${log.level}`;
+            
+            const time = new Date(log.timestamp * 1000).toLocaleTimeString();
+            entry.textContent = `[${time}] ${log.message}`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addLog(level, message) {
+            addLogEntry({
+                level,
+                message,
+                timestamp: Date.now() / 1000
+            });
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            fetch('/api/browser/logs', { method: 'DELETE' });
+        }
+
+        // 定时刷新状态
+        setInterval(refreshStatus, 30000);
+        
+        // ============ 站点管理功能 ============
+        
+        let currentEditDomain = null;
+        let currentSiteConfig = null;
+        
+        // 添加新站点
+        async function addNewSite() {
+            const domain = document.getElementById('newSiteDomain').value.trim();
+            const url = document.getElementById('newSiteUrl').value.trim();
+            const stealth = document.getElementById('newSiteStealth').checked;
+            
+            if (!domain) {
+                alert('请输入站点域名');
+                return;
+            }
+            
+            const config = {
+                url: url || `https://${domain}`,
+                selectors: {
+                    input_box: '',
+                    send_btn: '',
+                    result_container: '',
+                    new_chat_btn: ''
+                },
+                workflow: [
+                    { action: 'CLICK', target: 'new_chat_btn', optional: true, value: null },
+                    { action: 'WAIT', target: '', optional: false, value: 0.5 },
+                    { action: 'FILL_INPUT', target: 'input_box', optional: false, value: null },
+                    { action: 'CLICK', target: 'send_btn', optional: true, value: null },
+                    { action: 'STREAM_WAIT', target: 'result_container', optional: false, value: null }
+                ],
+                stealth: stealth
+            };
+            
+            try {
+                const response = await fetch('/api/browser/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config: { [domain]: config } })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    addLog('info', `已添加站点: ${domain}`);
+                    bootstrap.Modal.getInstance(document.getElementById('addSiteModal')).hide();
+                    document.getElementById('addSiteForm').reset();
+                    loadSites();
+                } else {
+                    addLog('error', `添加站点失败: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `添加站点出错: ${error.message}`);
+            }
+        }
+        
+        // 编辑站点
+        function editSite(domain) {
+            currentEditDomain = domain;
+            currentSiteConfig = JSON.parse(JSON.stringify(window.sitesConfig[domain]));
+            
+            document.getElementById('editSiteDomain').textContent = domain;
+            
+            // 渲染选择器列表
+            renderSelectors();
+            
+            // 渲染工作流步骤
+            renderWorkflow();
+            
+            // 设置JSON编辑器
+            document.getElementById('siteJsonEditor').value = JSON.stringify(currentSiteConfig, null, 2);
+            
+            const modal = new bootstrap.Modal(document.getElementById('editSiteModal'));
+            modal.show();
+        }
+        
+        // 渲染选择器列表
+        function renderSelectors() {
+            const container = document.getElementById('selectorsList');
+            const selectors = currentSiteConfig.selectors || {};
+            
+            container.innerHTML = '';
+            
+            for (const [key, value] of Object.entries(selectors)) {
+                const item = document.createElement('div');
+                item.className = 'selector-item';
+                item.innerHTML = `
+                    <div class="selector-key">
+                        <input type="text" class="form-control form-control-sm" value="${key}" data-original="${key}">
+                    </div>
+                    <div class="selector-value">
+                        <input type="text" class="form-control form-control-sm" value="${value || ''}" placeholder="CSS选择器" data-key="${key}">
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeSelector(this, '${key}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            }
+        }
+        
+        // 添加选择器
+        function addSelector() {
+            const key = prompt('请输入选择器名称（如 input_box）:');
+            if (key && key.trim()) {
+                currentSiteConfig.selectors = currentSiteConfig.selectors || {};
+                currentSiteConfig.selectors[key.trim()] = '';
+                renderSelectors();
+            }
+        }
+        
+        // 删除选择器
+        function removeSelector(btn, key) {
+            if (confirm(`确定要删除选择器 "${key}" 吗？`)) {
+                delete currentSiteConfig.selectors[key];
+                renderSelectors();
+            }
+        }
+        
+        // 渲染工作流步骤
+        function renderWorkflow() {
+            const container = document.getElementById('workflowSteps');
+            const workflow = currentSiteConfig.workflow || [];
+            
+            container.innerHTML = '';
+            
+            workflow.forEach((step, index) => {
+                const div = document.createElement('div');
+                div.className = 'workflow-step';
+                div.setAttribute('data-index', index);
+                
+                const actionColors = {
+                    'CLICK': 'primary',
+                    'FILL_INPUT': 'success',
+                    'WAIT': 'warning',
+                    'KEY_PRESS': 'info',
+                    'STREAM_WAIT': 'danger',
+                    'STREAM_OUTPUT': 'danger'
+                };
+                
+                const color = actionColors[step.action] || 'secondary';
+                
+                div.innerHTML = `
+                    <span class="step-handle"><i class="bi bi-grip-vertical"></i></span>
+                    <span class="badge bg-${color} action-badge">${step.action}</span>
+                    <div class="step-content">
+                        <small class="text-muted">目标:</small>
+                        <input type="text" class="form-control form-control-sm d-inline-block" style="width: 120px"
+                               value="${step.target || ''}" onchange="updateStepTarget(${index}, this.value)">
+                        ${step.action === 'WAIT' ? `
+                            <small class="text-muted ms-2">时长:</small>
+                            <input type="number" class="form-control form-control-sm d-inline-block" style="width: 70px"
+                                   value="${step.value || 0.5}" step="0.1" onchange="updateStepValue(${index}, this.value)">
+                            <small class="text-muted">秒</small>
+                        ` : ''}
+                        ${step.action === 'KEY_PRESS' ? `
+                            <small class="text-muted ms-2">按键:</small>
+                            <input type="text" class="form-control form-control-sm d-inline-block" style="width: 80px"
+                                   value="${step.target || 'Enter'}" onchange="updateStepTarget(${index}, this.value)">
+                        ` : ''}
+                        <div class="form-check form-check-inline ms-2">
+                            <input class="form-check-input" type="checkbox" ${step.optional ? 'checked' : ''}
+                                   onchange="updateStepOptional(${index}, this.checked)">
+                            <label class="form-check-label small">可选</label>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="moveStep(${index}, -1)" ${index === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-arrow-up"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="moveStep(${index}, 1)" ${index === workflow.length - 1 ? 'disabled' : ''}>
+                            <i class="bi bi-arrow-down"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeStep(${index})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // 添加工作流步骤
+        function addWorkflowStep(action) {
+            currentSiteConfig.workflow = currentSiteConfig.workflow || [];
+            
+            const step = {
+                action: action,
+                target: action === 'WAIT' ? '' : (action === 'KEY_PRESS' ? 'Enter' : ''),
+                optional: action === 'CLICK',
+                value: action === 'WAIT' ? 0.5 : null
+            };
+            
+            currentSiteConfig.workflow.push(step);
+            renderWorkflow();
+            updateJsonEditor();
+        }
+        
+        // 更新步骤目标
+        function updateStepTarget(index, value) {
+            currentSiteConfig.workflow[index].target = value;
+            updateJsonEditor();
+        }
+        
+        // 更新步骤值
+        function updateStepValue(index, value) {
+            currentSiteConfig.workflow[index].value = parseFloat(value) || 0.5;
+            updateJsonEditor();
+        }
+        
+        // 更新步骤可选状态
+        function updateStepOptional(index, optional) {
+            currentSiteConfig.workflow[index].optional = optional;
+            updateJsonEditor();
+        }
+        
+        // 移动步骤
+        function moveStep(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= currentSiteConfig.workflow.length) return;
+            
+            const workflow = currentSiteConfig.workflow;
+            [workflow[index], workflow[newIndex]] = [workflow[newIndex], workflow[index]];
+            renderWorkflow();
+            updateJsonEditor();
+        }
+        
+        // 删除步骤
+        function removeStep(index) {
+            if (confirm('确定要删除此步骤吗？')) {
+                currentSiteConfig.workflow.splice(index, 1);
+                renderWorkflow();
+                updateJsonEditor();
+            }
+        }
+        
+        // 更新JSON编辑器
+        function updateJsonEditor() {
+            document.getElementById('siteJsonEditor').value = JSON.stringify(currentSiteConfig, null, 2);
+        }
+        
+        // 从选择器表单收集数据
+        function collectSelectorsFromForm() {
+            const items = document.querySelectorAll('#selectorsList .selector-item');
+            const selectors = {};
+            
+            items.forEach(item => {
+                const keyInput = item.querySelector('.selector-key input');
+                const valueInput = item.querySelector('.selector-value input');
+                const key = keyInput.value.trim();
+                const value = valueInput.value.trim();
+                if (key) {
+                    selectors[key] = value || null;
+                }
+            });
+            
+            return selectors;
+        }
+        
+        // 保存站点配置
+        async function saveSiteConfig() {
+            try {
+                // 检查当前激活的tab
+                const activeTab = document.querySelector('#editTabs .nav-link.active');
+                const tabId = activeTab.getAttribute('data-bs-target');
+                
+                if (tabId === '#jsonTab') {
+                    // 从JSON编辑器解析
+                    try {
+                        currentSiteConfig = JSON.parse(document.getElementById('siteJsonEditor').value);
+                    } catch (e) {
+                        alert('JSON格式错误: ' + e.message);
+                        return;
+                    }
+                } else if (tabId === '#selectorsTab') {
+                    // 从表单收集选择器
+                    currentSiteConfig.selectors = collectSelectorsFromForm();
+                }
+                
+                const response = await fetch('/api/browser/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config: { [currentEditDomain]: currentSiteConfig } })
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    addLog('info', `站点配置已保存: ${currentEditDomain}`);
+                    bootstrap.Modal.getInstance(document.getElementById('editSiteModal')).hide();
+                    loadSites();
+                } else {
+                    addLog('error', `保存失败: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `保存出错: ${error.message}`);
+            }
+        }
+        
+        // 删除站点
+        async function deleteSite() {
+            if (!confirm(`确定要删除站点 "${currentEditDomain}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/browser/config/${encodeURIComponent(currentEditDomain)}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    addLog('info', `已删除站点: ${currentEditDomain}`);
+                    bootstrap.Modal.getInstance(document.getElementById('editSiteModal')).hide();
+                    loadSites();
+                } else {
+                    addLog('error', `删除失败: ${result.error}`);
+                }
+            } catch (error) {
+                addLog('error', `删除出错: ${error.message}`);
+            }
+        }
+        
+        // 监听JSON编辑器变化，同步到配置
+        document.getElementById('siteJsonEditor').addEventListener('input', function() {
+            try {
+                currentSiteConfig = JSON.parse(this.value);
+                this.classList.remove('is-invalid');
+            } catch (e) {
+                this.classList.add('is-invalid');
+            }
+        });
+    </script>
+</body>
+</html>
