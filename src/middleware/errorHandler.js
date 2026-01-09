@@ -15,12 +15,12 @@ export const asyncHandler = (fn) => (/** @type {any} */ req, /** @type {any} */ 
 
 /**
  * 错误处理中间件
- * @param {Error} err
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
+ * @param {any} err
+ * @param {any} req
+ * @param {any} res
+ * @param {any} _next
  */
-export const errorMiddleware = (err, req, res, next) => {
+export const errorMiddleware = (err, req, res, _next) => {
   // 记录完整错误信息
   logger.error({
     message: err.message,
@@ -65,8 +65,8 @@ export const errorMiddleware = (err, req, res, next) => {
 
 /**
  * 404 错误处理
- * @param {import('express').Request} req
- * @param {import('express').Response} res
+ * @param {any} req
+ * @param {any} res
  */
 export const notFoundHandler = (req, res) => {
   res.status(404).json({

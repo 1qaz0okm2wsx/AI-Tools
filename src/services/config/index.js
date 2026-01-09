@@ -4,10 +4,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../../utils/logger.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 默认配置
 const DEFAULT_CONFIG = {
@@ -18,46 +15,6 @@ const DEFAULT_CONFIG = {
       maxConnections: 10,
       idleTimeout: 300000, // 5分钟
       acquireTimeout: 5000 // 5秒
-    }
-  },
-
-  // 浏览器配置
-  browser: {
-    enabled: true,
-    pool: {
-      maxInstances: 3,
-      idleTimeout: 300000, // 5分钟
-      acquireTimeout: 5000 // 5秒
-    },
-    constants: {
-      DEFAULT_PORT: 9222,
-      CONNECTION_TIMEOUT: 10,
-      STEALTH_DELAY_MIN: 0.1,
-      STEALTH_DELAY_MAX: 0.3,
-      ACTION_DELAY_MIN: 0.15,
-      ACTION_DELAY_MAX: 0.3,
-      DEFAULT_ELEMENT_TIMEOUT: 3,
-      FALLBACK_ELEMENT_TIMEOUT: 1,
-      ELEMENT_CACHE_MAX_AGE: 5.0,
-      STREAM_CHECK_INTERVAL_MIN: 0.1,
-      STREAM_CHECK_INTERVAL_MAX: 1.0,
-      STREAM_CHECK_INTERVAL_DEFAULT: 0.3,
-      STREAM_SILENCE_THRESHOLD: 6.0,
-      STREAM_MAX_TIMEOUT: 600,
-      STREAM_INITIAL_WAIT: 180,
-      STREAM_RERENDER_WAIT: 0.5,
-      STREAM_CONTENT_SHRINK_TOLERANCE: 3,
-      STREAM_MIN_VALID_LENGTH: 10,
-      STREAM_STABLE_COUNT_THRESHOLD: 5,
-      STREAM_SILENCE_THRESHOLD_FALLBACK: 10.0,
-      MAX_MESSAGE_LENGTH: 100000,
-      MAX_MESSAGES_COUNT: 100,
-      STREAM_INITIAL_ELEMENT_WAIT: 10,
-      STREAM_MAX_ABNORMAL_COUNT: 5,
-      STREAM_MAX_ELEMENT_MISSING: 10,
-      STREAM_CONTENT_SHRINK_THRESHOLD: 0.3,
-      STREAM_USER_MSG_WAIT: 1.5,
-      STREAM_PRE_BASELINE_DELAY: 0.3
     }
   },
 
@@ -119,9 +76,10 @@ export class ConfigService {
 
       logger.info(`[CONFIG] 配置已加载 (环境: ${this.environment})`);
       return this.config;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       logger.warn(`[CONFIG] 加载配置失败，使用默认值: ${error.message}`);
       this.config = { ...DEFAULT_CONFIG };
+      this.applyEnvOverrides();
       return this.config;
     }
   }
@@ -129,11 +87,11 @@ export class ConfigService {
   /**
    * 加载配置文件
    */
-  async loadConfigFile(filePath) {
+  async loadConfigFile(/** @type {string} */ filePath) {
     try {
       const data = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(data);
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       if (error.code !== 'ENOENT') {
         logger.warn(`[CONFIG] 读取配置文件失败: ${error.message}`);
       }
@@ -144,7 +102,7 @@ export class ConfigService {
   /**
    * 合并配置
    */
-  mergeConfig(base, override) {
+  mergeConfig(/** @type {any} */ base, /** @type {any} */ override) {
     const result = { ...base };
 
     for (const key in override) {
@@ -171,21 +129,6 @@ export class ConfigService {
     }
     if (process.env.DB_POOL_IDLE_TIMEOUT) {
       this.config.database.pool.idleTimeout = parseInt(process.env.DB_POOL_IDLE_TIMEOUT, 10);
-    }
-
-    // 浏览器配置
-    if (process.env.BROWSER_ENABLED) {
-      const raw = String(process.env.BROWSER_ENABLED).toLowerCase();
-      this.config.browser.enabled = !(raw === 'false' || raw === '0' || raw === 'off');
-    }
-    if (process.env.BROWSER_PORT) {
-      this.config.browser.constants.DEFAULT_PORT = parseInt(process.env.BROWSER_PORT, 10);
-    }
-    if (process.env.BROWSER_POOL_MAX) {
-      this.config.browser.pool.maxInstances = parseInt(process.env.BROWSER_POOL_MAX, 10);
-    }
-    if (process.env.BROWSER_POOL_IDLE_TIMEOUT) {
-      this.config.browser.pool.idleTimeout = parseInt(process.env.BROWSER_POOL_IDLE_TIMEOUT, 10);
     }
 
     // 服务器配置
@@ -230,7 +173,7 @@ export class ConfigService {
       await fs.writeFile(this.configPath, configData, 'utf-8');
 
       logger.info(`[CONFIG] 配置已保存: ${this.configPath}`);
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       logger.error(`[CONFIG] 保存配置失败: ${error.message}`);
       throw error;
     }
@@ -239,8 +182,9 @@ export class ConfigService {
   /**
    * 获取配置值
    */
-  get(path) {
+  get(/** @type {string} */ path) {
     const keys = path.split('.');
+    /** @type {any} */
     let value = this.config;
 
     for (const key of keys) {
@@ -257,8 +201,9 @@ export class ConfigService {
   /**
    * 设置配置值
    */
-  set(path, value) {
+  set(/** @type {string} */ path, /** @type {any} */ value) {
     const keys = path.split('.');
+    /** @type {any} */
     let config = this.config;
 
     for (let i = 0; i < keys.length - 1; i++) {
@@ -276,13 +221,6 @@ export class ConfigService {
    */
   getDatabaseConfig() {
     return this.config.database;
-  }
-
-  /**
-   * 获取浏览器配置
-   */
-  getBrowserConfig() {
-    return this.config.browser;
   }
 
   /**
@@ -335,14 +273,6 @@ export class ConfigService {
     }
     if (this.config.database.pool.idleTimeout < 1000) {
       errors.push('数据库连接池空闲超时必须大于1秒');
-    }
-
-    // 验证浏览器配置
-    if (this.config.browser.pool.maxInstances < 1) {
-      errors.push('浏览器实例池最大实例数必须大于0');
-    }
-    if (this.config.browser.pool.idleTimeout < 1000) {
-      errors.push('浏览器实例池空闲超时必须大于1秒');
     }
 
     // 验证服务器配置

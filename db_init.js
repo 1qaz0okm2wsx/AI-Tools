@@ -2,6 +2,8 @@
  * 数据库初始化模块 (ESM)
  */
 
+import { logger } from './src/utils/logger.js';
+
 // 数据库初始化
 /**
  * @param {any} db
@@ -121,7 +123,7 @@ export function logOperation(db, operationType, targetType, targetId, targetName
         /** @param {any} err */
         (err) => {
             if (err) {
-                console.error('记录操作日志失败:', err.message);
+                logger.error('记录操作日志失败:', err.message);
             }
         }
     );

@@ -6,272 +6,219 @@
     <title>AI模型管理工具</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --success-gradient: linear-gradient(135deg, #13B497 0%, #59D4A8 100%);
-            --warning-gradient: linear-gradient(135deg, #FFB347 0%, #FFCC33 100%);
-            --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            --hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        /* 页面特定样式 */
+        .provider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            animation: fadeInUp 0.6s ease-out;
         }
-
-        body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .container {
-            padding-top: 30px;
-            padding-bottom: 50px;
-        }
-
-        .header-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
-            background: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            box-shadow: var(--card-shadow);
-        }
-
-        h1 {
-            background: var(--primary-gradient);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 700;
-            margin: 0;
-            display: flex;
-            align-items: center;
-        }
-
-        h1 i {
-            -webkit-text-fill-color: #764ba2;
-            margin-right: 10px;
-        }
-
-        .card {
-            margin-bottom: 25px;
-            border-radius: 15px;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s ease;
+        
+        .provider-card {
+            position: relative;
             overflow: hidden;
-            border: none;
-            background: white;
         }
-
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: var(--hover-shadow);
+        
+        .provider-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
         }
-
-        .provider-header {
-            background: var(--primary-gradient);
+        
+        .provider-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            padding: 15px 20px;
-            border: none;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
         }
-
-        .model-badge {
-            margin-right: 8px;
-            margin-bottom: 8px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            background: var(--info-gradient);
-            border: none;
-            color: white;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
         }
-
+        
+        .action-buttons .btn {
+            flex: 1;
+            min-width: calc(50% - 0.25rem);
+        }
+        
         .api-key {
-            font-family: 'Courier New', monospace;
+            font-family: var(--font-mono);
             font-size: 0.8rem;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px 8px;
-            border-radius: 5px;
-            margin-top: 5px;
+            background: var(--gray-100);
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-lg);
+            color: var(--gray-700);
+            word-break: break-all;
+            display: inline-block;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .models-container {
+            min-height: 60px;
+            max-height: 180px;
+            overflow-y: auto;
+            background: var(--gray-50);
+            border-radius: var(--radius-lg);
+            padding: 0.75rem;
+            border: 1px solid var(--gray-200);
+        }
+        
+        .model-item {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            transition: all var(--transition-base);
+            margin-bottom: 0.5rem;
+            margin-right: 0.5rem;
+        }
+        
+        .model-item:last-child {
+            margin-bottom: 0;
+            margin-right: 0;
+        }
+        
+        .model-item:hover {
+            background: var(--gray-50);
+            border-color: var(--primary-light);
+            transform: translateX(3px);
+        }
+        
+        .model-name {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            color: var(--gray-700);
             word-break: break-all;
         }
-
-        .action-buttons {
-            margin-top: 15px;
-        }
-
-        .no-providers {
+        
+        .empty-state {
             text-align: center;
-            padding: 80px 20px;
+            padding: 4rem 2rem;
             background: white;
-            border-radius: 15px;
-            box-shadow: var(--card-shadow);
+            border-radius: var(--radius-3xl);
+            box-shadow: var(--shadow-lg);
+            animation: fadeInUp 0.6s ease-out;
         }
-
-        .no-providers i {
-            font-size: 4rem;
-            background: var(--secondary-gradient);
+        
+        .empty-state i {
+            font-size: 4.5rem;
+            background: var(--gradient-secondary);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 20px;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+        
+        .empty-state h3 {
+            color: var(--gray-700);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        .empty-state p {
+            color: var(--gray-500);
+            margin-bottom: 1.75rem;
+        }
+        
+        /* 快捷操作按钮 */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        
+        /* 状态徽章 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all var(--transition-base);
+        }
+        
+        .status-badge.available {
+            background: var(--success-bg);
+            color: var(--success-color);
+        }
+        
+        .status-badge.unavailable {
+            background: var(--danger-bg);
+            color: var(--danger-color);
+        }
+        
+        .status-badge.checking {
+            background: var(--warning-bg);
+            color: var(--warning-color);
+        }
+        
+        .status-badge.unknown {
+            background: var(--gray-200);
+            color: var(--gray-500);
         }
 
-        .no-providers h3 {
-            color: #495057;
-            margin-bottom: 20px;
+        /* 搜索框样式 */
+        .search-box .input-group {
+            flex: 1;
+        }
+        .search-box .input-group-text {
+            background: var(--gray-100);
+            border-color: var(--gray-300);
+        }
+        .search-box .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
         }
 
-        .btn {
-            border-radius: 10px;
-            padding: 8px 16px;
-            font-weight: 500;
-            transition: all 0.2s;
-            border: none;
+        /* 筛选框样式 */
+        .filter-box .form-select {
+            border-color: var(--gray-300);
+        }
+        .filter-box .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
         }
 
-        .btn-primary {
-            background: var(--primary-gradient);
-            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        /* 旋转动画 */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.5);
-        }
-
-        .btn-success {
-            background: var(--success-gradient);
-            box-shadow: 0 4px 10px rgba(19, 180, 151, 0.4);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(19, 180, 151, 0.5);
-        }
-
-        .btn-warning {
-            background: var(--warning-gradient);
-            box-shadow: 0 4px 10px rgba(255, 179, 71, 0.4);
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(255, 179, 71, 0.5);
-        }
-
-        .btn-danger {
-            background: var(--secondary-gradient);
-            box-shadow: 0 4px 10px rgba(240, 147, 251, 0.4);
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(240, 147, 251, 0.5);
-        }
-
-        .btn-outline-secondary {
-            border: 2px solid #e9ecef;
-            color: #6c757d;
-        }
-
-        .btn-outline-secondary:hover {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
-        }
-
-        .btn-outline-info {
-            border: 2px solid #4facfe;
-            color: #4facfe;
-        }
-
-        .btn-outline-info:hover {
-            background: var(--info-gradient);
-            border-color: #00f2fe;
-            color: white;
-        }
-
-        .dropdown-menu {
-            border-radius: 10px;
-            box-shadow: var(--card-shadow);
-            border: none;
-            padding: 10px;
-        }
-
-        .dropdown-item {
-            border-radius: 8px;
-            margin: 2px 0;
-            transition: all 0.2s;
-        }
-
-        .dropdown-item:hover {
-            background: #f8f9fa;
-            transform: translateX(5px);
-        }
-
-        .alert {
-            border-radius: 10px;
-            border: none;
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .alert-success {
-            background: var(--success-gradient);
-            color: white;
-        }
-
-        .alert-danger {
-            background: var(--secondary-gradient);
-            color: white;
-        }
-
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-
-        /* 动画效果 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .header-actions {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-
-            .btn-group {
-                width: 100%;
-            }
-
-            .dropdown-toggle {
-                width: 100%;
-            }
+        .spin {
+            animation: spin 1s linear infinite;
         }
     </style>
 </head>
 <body>
-    <div class="container py-4">
+    <div class="container py-6">
         <!-- 显示错误消息 -->
         <% if (typeof error !== 'undefined' && error) { %>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
@@ -279,186 +226,227 @@
         <!-- 显示成功消息 -->
         <% if (typeof success !== 'undefined' && success) { %>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill"></i> <%= success %>
+                <i class="bi bi-check-circle-fill me-2"></i> <%= success %>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <% } %>
 
+        <!-- 页面头部 -->
         <div class="header-actions">
-            <h1><i class="bi bi-cpu"></i> AI模型管理工具</h1>
             <div>
-                <div class="btn-group me-2" role="group">
-                    <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="healthStatusDropdown">
-                        <i class="bi bi-activity" id="healthStatusIcon"></i> <span id="healthStatusText">检查中...</span>
+                <h1 class="mb-1">
+                    <i class="bi bi-cpu"></i>
+                    <span>AI模型管理工具</span>
+                </h1>
+                <p class="text-muted mb-0">统一管理您的所有AI服务提供商和API密钥</p>
+            </div>
+            <div class="btn-group d-none d-md-flex">
+                <div class="dropdown me-2">
+                    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="healthStatusDropdown">
+                        <i class="bi bi-activity me-1"></i>
+                        <i class="bi bi-dot status-badge-checking"></i>
+                        <span id="healthStatusText">检查中...</span>
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><h6 class="dropdown-header">系统状态</h6></li>
-                        <li><div id="healthDetails" class="px-3 py-2">正在获取系统状态...</div></li>
+                    <ul class="dropdown-menu shadow-lg">
+                        <li><h6 class="dropdown-header"><i class="bi bi-speedometer2 me-1"></i>系统状态</h6></li>
+                        <li><div id="healthDetails" class="px-3 py-2 text-muted">正在获取系统状态...</div></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="/health-status" target="_blank">查看详细状态</a></li>
+                        <li><a class="dropdown-item" href="/health-status" target="_blank"><i class="bi bi-file-text me-2"></i>查看详细状态</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" onclick="checkAllApis()"><i class="bi bi-arrow-clockwise"></i> 立即检查所有API</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="checkAllApis()"><i class="bi bi-arrow-clockwise me-2"></i>立即检查所有API</a></li>
                     </ul>
                 </div>
-                <div class="btn-group me-2" role="group">
+                <div class="dropdown me-2">
                     <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-download"></i> 导出
+                        <i class="bi bi-download me-1"></i> 导出
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="/export/json" target="_blank"><i class="bi bi-filetype-json"></i> 导出为JSON</a></li>
-                        <li><a class="dropdown-item" href="/export/csv" target="_blank"><i class="bi bi-filetype-csv"></i> 导出为CSV</a></li>
+                    <ul class="dropdown-menu shadow-lg">
+                        <li><a class="dropdown-item" href="/export/json" target="_blank"><i class="bi bi-filetype-json me-2 text-primary"></i> 导出为JSON</a></li>
+                        <li><a class="dropdown-item" href="/export/csv" target="_blank"><i class="bi bi-filetype-csv me-2 text-success"></i> 导出为CSV</a></li>
                     </ul>
                 </div>
-                <div class="btn-group me-2" role="group">
+                <div class="dropdown me-2">
                     <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-upload"></i> 导入
+                        <i class="bi bi-upload me-1"></i> 导入
                     </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#" onclick="showImportModal('json')"><i class="bi bi-filetype-json"></i> 导入JSON文件</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="showImportModal('csv')"><i class="bi bi-filetype-csv"></i> 导入CSV文件</a></li>
+                    <ul class="dropdown-menu shadow-lg">
+                        <li><a class="dropdown-item" href="#" onclick="showImportModal('json')"><i class="bi bi-filetype-json me-2 text-primary"></i> 导入JSON文件</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="showImportModal('csv')"><i class="bi bi-filetype-csv me-2 text-success"></i> 导入CSV文件</a></li>
                     </ul>
                 </div>
-                <a href="/browser" class="btn btn-outline-primary me-2">
-                    <i class="bi bi-browser-chrome"></i> 浏览器自动化
-                </a>
-                <a href="/logs" class="btn btn-outline-info me-2">
-                    <i class="bi bi-journal-text"></i> 操作日志
-                </a>
-                <a href="/scheduler" class="btn btn-outline-warning me-2">
-                    <i class="bi bi-clock-history"></i> 定时任务
-                </a>
-                <a href="/billing" class="btn btn-outline-success me-2">
-                    <i class="bi bi-wallet2"></i> 额度统计
-                </a>
-                <a href="/add-provider" class="btn btn-primary">
-                    <i class="bi bi-plus-circle"></i> 添加AI服务提供商
-                </a>
             </div>
         </div>
 
+        <!-- 浏览器功能开关卡片 -->
+        <div class="browser-toggle-card">
+            <div class="toggle-left">
+                <div class="toggle-icon">
+                    <i class="bi bi-browser-chrome"></i>
+                </div>
+                <div class="toggle-info">
+                    <div class="toggle-title">网页AI服务转换</div>
+                    <div class="toggle-desc" id="browserToggleDesc">
+                        将网页版AI转换为OpenAI兼容API
+                    </div>
+                </div>
+            </div>
+            <div class="toggle-right">
+                <label class="toggle-switch" id="browserToggleWrapper">
+                    <input type="checkbox" id="browserToggle"
+                           onchange="toggleBrowser()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <button class="btn btn-sm btn-outline-info"
+                        onclick="openBrowserSettings()"
+                        title="浏览器设置">
+                    <i class="bi bi-gear"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="quick-actions">
+            <!-- 搜索框 -->
+            <div class="search-box" style="flex: 1; min-width: 250px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索提供商名称、URL或模型..." onkeyup="filterProviders()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()" title="清除搜索">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 状态筛选 -->
+            <div class="filter-box">
+                <select class="form-select" id="filterSelect" onchange="filterProviders()" style="min-width: 120px;">
+                    <option value="all">全部状态</option>
+                    <option value="available">可用</option>
+                    <option value="unavailable">不可用</option>
+                    <option value="unknown">未检查</option>
+                </select>
+            </div>
+
+            <a href="/dashboard" class="btn btn-outline-info">
+                <i class="bi bi-speedometer2 me-1"></i> 仪表盘
+            </a>
+            <a href="/browser" class="btn btn-outline-primary">
+                <i class="bi bi-browser-chrome me-1"></i> 浏览器自动化
+            </a>
+            <a href="/logs" class="btn btn-outline-info">
+                <i class="bi bi-journal-text me-1"></i> 操作日志
+            </a>
+            <a href="/scheduler" class="btn btn-outline-warning">
+                <i class="bi bi-clock-history me-1"></i> 定时任务
+            </a>
+            <a href="/billing" class="btn btn-outline-success">
+                <i class="bi bi-wallet2 me-1"></i> 额度统计
+            </a>
+            <a href="/add-provider" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> 添加提供商
+            </a>
+            <button class="btn btn-outline-success" onclick="testAllConnections()" id="testAllBtn">
+                <i class="bi bi-activity me-1"></i> 批量测试
+            </button>
+        </div>
+
+        <!-- 空状态 -->
         <% if (providers.length === 0) { %>
-            <div class="no-providers">
-                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+            <div class="empty-state">
+                <i class="bi bi-inboxes"></i>
                 <h3>暂无AI服务提供商</h3>
-                <p>点击上方"添加AI服务提供商"按钮开始添加</p>
+                <p>点击上方"添加AI服务提供商"按钮开始添加您的第一个提供商</p>
+                <a href="/add-provider" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-circle me-2"></i>添加第一个提供商
+                </a>
             </div>
         <% } else { %>
-            <div class="row">
-                <% providers.forEach(provider => { %>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="card">
-                            <div class="provider-header d-flex justify-content-between align-items-center">
-                                <div class="d-flex align-items-center">
-                                    <h5 class="mb-0"><%= provider.name %></h5>
-                                    <span class="ms-2 badge bg-light text-primary" style="font-size: 0.7rem;">ID: <%= provider.id %></span>
+            <!-- 提供商卡片网格 -->
+            <div class="provider-grid">
+                <% providers.forEach((provider, index) => { %>
+                    <div class="card provider-card fade-in-up" data-id="<%= provider.id %>">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="background: var(--gradient-primary); color: white; border: none;">
+                            <div class="d-flex align-items-center">
+                                <div class="provider-avatar" style="width: 36px; height: 36px; font-size: 1.25rem; margin-bottom: 0; margin-right: 0.75rem;">
+                                    <i class="bi bi-building"></i>
                                 </div>
-                                <span class="badge bg-secondary api-status-badge" data-provider="<%= provider.name %>" title="API状态">
-                                    <i class="bi bi-question-circle"></i> 未知
-                                </span>
+                                <div>
+                                    <h5 class="mb-0 text-white"><%= provider.name %></h5>
+                                    <small class="text-white-50">ID: <%= provider.id %></small>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <% if (provider.website) { %>
-                                    <p><strong>官方网站:</strong> <a href="<%= provider.website %>" target="_blank"><%= provider.website %></a></p>
-                                <% } %>
-                                <p><strong>API地址:</strong> <a href="<%= provider.url %>" target="_blank"><%= provider.url %></a></p>
-                                <p><strong>API密钥:</strong>
-                                    <% if (provider.api_key) { %>
-                                        <span class="api-key"><%= provider.api_key.substring(0, 10) %>...</span>
-                                    <% } else { %>
-                                        <a href="/provider/<%= provider.id %>/api-keys" class="btn btn-sm btn-outline-info">管理密钥</a>
-                                    <% } %>
+                            <span class="status-badge unknown" data-provider-id="<%= provider.id %>" data-provider-name="<%= provider.name %>" title="API状态">
+                                <i class="bi bi-question-circle"></i> 未知
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <% if (provider.website) { %>
+                                <p class="mb-2">
+                                    <strong><i class="bi bi-globe me-1 text-primary"></i>官方网站:</strong> 
+                                    <a href="<%= provider.website %>" target="_blank" class="text-decoration-none"><%= provider.website %></a>
                                 </p>
-                                <p><strong>可用模型:</strong> <span class="badge bg-secondary"><%= provider.models ? provider.models.length : 0 %></span></p>
-                                <% if (provider.models && provider.models.length > 0) { %>
-                                    <div class="models-container">
-                                        <% provider.models.forEach(model => { %>
-                                            <div class="model-item">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="model-name"><%= model.model_name || model.model_id %></span>
-                                                    <% if (model.category) { %>
-                                                        <span class="ms-2 badge bg-info" style="font-size: 0.6rem;"><%= model.category %></span>
-                                                    <% } %>
-                                                </div>
-                                                <button class="btn btn-sm btn-outline-secondary copy-btn" onclick="copyToClipboard('<%= model.model_id %>')" title="复制模型ID">
-                                                    <i class="bi bi-clipboard"></i>
-                                                </button>
-                                            </div>
-                                        <% }); %>
-                                    </div>
+                            <% } %>
+                            <p class="mb-2">
+                                <strong><i class="bi bi-link-45deg me-1 text-info"></i>API地址:</strong> 
+                                <a href="<%= provider.url %>" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 200px;"><%= provider.url %></a>
+                            </p>
+                            <p class="mb-3">
+                                <strong><i class="bi bi-key me-1 text-warning"></i>API密钥:</strong>
+                                <% if (provider.api_key) { %>
+                                    <span class="api-key"><%= provider.api_key.substring(0, 4) %>****<%= provider.api_key.substring(provider.api_key.length - 4) %></span>
                                 <% } else { %>
-                                    <span class="text-muted">尚未检测模型</span>
+                                    <a href="/provider/<%= provider.id %>/api-keys" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-key me-1"></i>管理密钥
+                                    </a>
                                 <% } %>
-
-                                <style>
-                                    .models-container {
-                                        display: flex;
-                                        flex-wrap: wrap;
-                                        gap: 8px;
-                                        margin-top: 10px;
-                                        max-height: 300px;
-                                        overflow-y: auto;
-                                        padding: 5px;
-                                        background: rgba(255, 255, 255, 0.5);
-                                        border-radius: 8px;
-                                    }
-
-                                    .model-item {
-                                        background: white;
-                                        border: 1px solid #e9ecef;
-                                        border-radius: 6px;
-                                        padding: 6px 10px;
-                                        font-size: 0.9rem;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: space-between;
-                                        width: 100%;
-                                        transition: all 0.2s;
-                                    }
-
-                                    .model-item:hover {
-                                        background: #f8f9fa;
-                                        border-color: #dee2e6;
-                                        transform: translateX(2px);
-                                    }
-
-                                    .model-name {
-                                        font-family: 'Courier New', monospace;
-                                        font-weight: 600;
-                                        color: #495057;
-                                        word-break: break-all;
-                                    }
-
-                                    .copy-btn {
-                                        padding: 2px 6px;
-                                        font-size: 0.75rem;
-                                        margin-left: 8px;
-                                        opacity: 0.6;
-                                    }
-
-                                    .model-item:hover .copy-btn {
-                                        opacity: 1;
-                                    }
-                                </style>
-
-                                <div class="action-buttons">
-                                    <a href="/provider/<%= provider.id %>/api-keys" class="btn btn-sm btn-outline-info me-1" title="管理API密钥">
-                                        <i class="bi bi-key"></i> 密钥
-                                    </a>
-                                    <a href="/edit-provider/<%= provider.id %>" class="btn btn-sm btn-outline-warning me-1">
-                                        <i class="bi bi-pencil"></i> 编辑
-                                    </a>
-                                    <form action="/detect-models/<%= provider.id %>" method="POST" style="display: inline;">
-                                        <button type="submit" class="btn btn-sm btn-outline-primary me-1">
-                                            <i class="bi bi-search"></i> 检测模型
-                                        </button>
-                                    </form>
-                                    <form action="/delete-provider/<%= provider.id %>" method="POST" style="display: inline;" 
-                                          onsubmit="return confirm('确定要删除此提供商及其所有模型吗？')">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="bi bi-trash"></i> 删除
-                                        </button>
-                                    </form>
+                            </p>
+                            <p class="mb-2">
+                                <strong><i class="bi bi-box-seam me-1 text-success"></i>可用模型:</strong> 
+                                <span class="badge bg-primary"><%= provider.models ? provider.models.length : 0 %></span>
+                            </p>
+                            <% if (provider.models && provider.models.length > 0) { %>
+                                <div class="models-container">
+                                    <% provider.models.forEach(model => { %>
+                                        <div class="model-item">
+                                            <div class="d-flex align-items-center">
+                                                <span class="model-name"><%= model.model_name || model.model_id %></span>
+                                                <% if (model.category) { %>
+                                                    <span class="badge bg-info ms-1" style="font-size: 0.6rem;"><%= model.category %></span>
+                                                <% } %>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('<%= model.model_id %>')" title="复制模型ID">
+                                                <i class="bi bi-clipboard"></i>
+                                            </button>
+                                        </div>
+                                    <% }); %>
                                 </div>
+                            <% } else { %>
+                                <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>尚未检测模型</span>
+                            <% } %>
+
+                            <div class="action-buttons">
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="testConnection(<%= provider.id %>, this)" data-provider-id="<%= provider.id %>" data-provider-name="<%= provider.name %>" title="测试连接">
+                                    <i class="bi bi-activity"></i> 测试
+                                </button>
+                                <a href="/provider/<%= provider.id %>/api-keys" class="btn btn-sm btn-outline-info" title="管理API密钥">
+                                    <i class="bi bi-key"></i> 密钥
+                                </a>
+                                <a href="/edit-provider/<%= provider.id %>" class="btn btn-sm btn-outline-warning" title="编辑">
+                                    <i class="bi bi-pencil"></i> 编辑
+                                </a>
+                                <form action="/detect-models/<%= provider.id %>" method="POST" style="flex: 1; margin: 0;">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" style="width: 100%;">
+                                        <i class="bi bi-search"></i> 检测模型
+                                    </button>
+                                </form>
+                                <form action="/delete-provider/<%= provider.id %>" method="POST" style="flex: 1; margin: 0;"
+                                      onsubmit="return confirm('确定要删除此提供商及其所有模型吗？')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" style="width: 100%;">
+                                        <i class="bi bi-trash"></i> 删除
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -468,21 +456,20 @@
 
         <!-- 分页导航 -->
         <% if (pagination && pagination.totalPages > 1) { %>
-            <nav aria-label="提供商列表分页">
-                <ul class="pagination justify-content-center mt-4">
+            <nav aria-label="提供商列表分页" class="mt-6">
+                <ul class="pagination justify-content-center">
                     <% if (pagination.hasPrevPage) { %>
                         <li class="page-item">
                             <a class="page-link" href="?page=<%= pagination.prevPage %>" aria-label="上一页">
-                                <span aria-hidden="true">&laquo;</span>
+                                <i class="bi bi-chevron-left"></i>
                             </a>
                         </li>
                     <% } else { %>
                         <li class="page-item disabled">
-                            <span class="page-link" aria-hidden="true">&laquo;</span>
+                            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
                         </li>
                     <% } %>
 
-                    <!-- 页码 -->
                     <% for (let i = 1; i <= pagination.totalPages; i++) { %>
                         <% if (i === pagination.currentPage) { %>
                             <li class="page-item active" aria-current="page">
@@ -498,17 +485,17 @@
                     <% if (pagination.hasNextPage) { %>
                         <li class="page-item">
                             <a class="page-link" href="?page=<%= pagination.nextPage %>" aria-label="下一页">
-                                <span aria-hidden="true">&raquo;</span>
+                                <i class="bi bi-chevron-right"></i>
                             </a>
                         </li>
                     <% } else { %>
                         <li class="page-item disabled">
-                            <span class="page-link" aria-hidden="true">&raquo;</span>
+                            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
                         </li>
                     <% } %>
                 </ul>
 
-                <div class="text-center text-muted mt-2">
+                <div class="text-center text-muted mt-3 small">
                     显示第 <%= (pagination.currentPage - 1) * 10 + 1 %> - 
                     <%= Math.min(pagination.currentPage * 10, pagination.totalItems) %> 条，
                     共 <%= pagination.totalItems %> 条记录
@@ -521,31 +508,38 @@
     <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="importModalLabel">导入数据</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header" style="background: var(--gradient-primary); color: white; border: none;">
+                    <h5 class="modal-title" id="importModalLabel">
+                        <i class="bi bi-upload me-2"></i>导入数据
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="importFile" class="form-label">选择文件</label>
+                    <div class="mb-4">
+                        <label for="importFile" class="form-label">
+                            <i class="bi bi-file-earmark me-1"></i>选择文件
+                        </label>
                         <input class="form-control" type="file" id="importFile" accept=".json,.csv">
                     </div>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 请选择一个有效的JSON或CSV文件。导入将添加新的提供商，不会覆盖现有数据。
+                    <div class="alert alert-info" style="background: var(--info-bg); border: none; color: var(--info-color);">
+                        <i class="bi bi-info-circle me-1"></i> 请选择一个有效的JSON或CSV文件。导入将添加新的提供商，不会覆盖现有数据。
                     </div>
-                    <div id="importProgress" class="progress mt-3 d-none">
+                    <div id="importProgress" class="progress mt-4 d-none">
                         <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                     </div>
                     <div id="importResult" class="mt-3"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="importButton">导入</button>
+                    <button type="button" class="btn btn-primary" id="importButton">
+                        <i class="bi bi-check-circle me-1"></i>导入
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // 显示导入模态框
         function showImportModal(type) {
@@ -577,12 +571,10 @@
                 return;
             }
 
-            // 显示进度条
             const progressContainer = document.getElementById('importProgress');
             const progressBar = progressContainer.querySelector('.progress-bar');
             progressContainer.classList.remove('d-none');
 
-            // 读取文件
             const reader = new FileReader();
             reader.onload = function(e) {
                 const content = e.target.result;
@@ -592,11 +584,9 @@
                     if (isJson) {
                         data = JSON.parse(content);
                     } else {
-                        // 对于CSV，直接发送原始文本
                         data = content;
                     }
 
-                    // 发送导入请求
                     const url = isJson ? '/import/json' : '/import/csv';
                     const options = {
                         method: 'POST',
@@ -606,7 +596,6 @@
                         body: JSON.stringify(data)
                     };
 
-                    // 模拟进度
                     let progress = 0;
                     const progressInterval = setInterval(() => {
                         progress += 10;
@@ -624,27 +613,25 @@
                             progressBar.textContent = '100%';
                             progressBar.setAttribute('aria-valuenow', 100);
 
-                            // 显示结果
                             const resultDiv = document.getElementById('importResult');
                             if (result.error) {
-                                resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> 导入失败: ${result.error}</div>`;
+                                resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> 导入失败: ${result.error}</div>`;
                             } else {
-                                resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${result.message}。成功导入 ${result.imported} 个提供商，${result.errors} 个错误。</div>`;
+                                resultDiv.innerHTML = `<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i> ${result.message}。成功导入 ${result.imported} 个提供商，${result.errors} 个错误。</div>`;
 
-                                // 3秒后刷新页面
                                 setTimeout(() => {
                                     window.location.reload();
-                                }, 3000);
+                                }, 2000);
                             }
                         })
                         .catch(error => {
                             clearInterval(progressInterval);
                             const resultDiv = document.getElementById('importResult');
-                            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> 导入失败: ${error.message}</div>`;
+                            resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> 导入失败: ${error.message}</div>`;
                         });
                 } catch (error) {
                     const resultDiv = document.getElementById('importResult');
-                    resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> 文件解析失败: ${error.message}</div>`;
+                    resultDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-1"></i> 文件解析失败: ${error.message}</div>`;
                 }
             };
 
@@ -656,22 +643,21 @@
             fetch('/health-status')
                 .then(response => response.json())
                 .then(data => {
-                    const statusIcon = document.getElementById('healthStatusIcon');
+                    const statusIcon = document.getElementById('healthStatusText').closest('button').querySelector('i.status-badge-checking');
                     const statusText = document.getElementById('healthStatusText');
                     const healthDetails = document.getElementById('healthDetails');
 
                     if (data.status === 'healthy' || data.status === 'ok') {
-                        statusIcon.className = 'bi bi-activity text-success';
+                        statusIcon.className = 'bi bi-check-circle-fill me-1 text-success';
                         statusText.textContent = '系统正常';
                     } else if (data.status === 'no_checks') {
-                        statusIcon.className = 'bi bi-activity text-secondary';
+                        statusIcon.className = 'bi bi-hourglass-split me-1 text-secondary';
                         statusText.textContent = '检查中...';
                         healthDetails.innerHTML = '<div class="text-muted">系统健康检查尚未完成</div>';
                     } else {
-                        statusIcon.className = 'bi bi-activity text-danger';
+                        statusIcon.className = 'bi bi-x-circle-fill me-1 text-danger';
                         statusText.textContent = '系统异常';
 
-                        // 显示错误详情
                         let detailsHtml = '<div class="text-danger">系统状态异常</div>';
                         if (data.error) {
                             detailsHtml += `<div class="small text-muted">${data.error}</div>`;
@@ -679,24 +665,23 @@
                         healthDetails.innerHTML = detailsHtml;
                     }
 
-                    // 如果有详细数据，显示系统信息
                     if (data.data) {
                         const systemInfo = data.data;
                         let infoHtml = `
-                            <div>数据库: <span class="badge bg-${systemInfo.database.status === 'connected' ? 'success' : 'danger'}">${systemInfo.database.status}</span></div>
-                            <div>运行时间: ${Math.floor(systemInfo.uptime / 60)} 分钟</div>
-                            <div>内存使用: ${systemInfo.memory.used} MB / ${systemInfo.memory.total} MB</div>
+                            <div class="small mb-1"><i class="bi bi-database me-1"></i>数据库: <span class="badge bg-${systemInfo.database.status === 'connected' ? 'success' : 'danger'}">${systemInfo.database.status}</span></div>
+                            <div class="small mb-1"><i class="bi bi-clock me-1"></i>运行时间: ${Math.floor(systemInfo.uptime / 60)} 分钟</div>
+                            <div class="small"><i class="bi bi-cpu me-1"></i>内存: ${systemInfo.memory.used} MB / ${systemInfo.memory.total} MB</div>
                         `;
                         healthDetails.innerHTML = infoHtml;
                     }
                 })
                 .catch(error => {
                     console.error('获取健康状态失败:', error);
-                    const statusIcon = document.getElementById('healthStatusIcon');
+                    const statusIcon = document.getElementById('healthStatusText').closest('button').querySelector('i.status-badge-checking');
                     const statusText = document.getElementById('healthStatusText');
                     const healthDetails = document.getElementById('healthDetails');
 
-                    statusIcon.className = 'bi bi-activity text-warning';
+                    statusIcon.className = 'bi bi-question-circle me-1 text-warning';
                     statusText.textContent = '状态未知';
                     healthDetails.innerHTML = '<div class="text-warning">无法获取系统状态</div>';
                 });
@@ -709,22 +694,22 @@
                 .then(data => {
                     if (Array.isArray(data)) {
                         data.forEach(status => {
-                            const badges = document.querySelectorAll(`.api-status-badge[data-provider="${status.provider}"]`);
+                            const badges = document.querySelectorAll(`.status-badge[data-provider="${status.provider}"]`);
                             badges.forEach(badge => {
                                 if (status.status === 'available') {
-                                    badge.className = 'badge bg-success api-status-badge';
+                                    badge.className = 'status-badge available';
                                     badge.innerHTML = `<i class="bi bi-wifi"></i> ${status.responseTime}ms`;
                                     badge.title = `API在线 (响应时间: ${status.responseTime}ms)`;
                                 } else if (status.status === 'unavailable') {
-                                    badge.className = 'badge bg-danger api-status-badge';
+                                    badge.className = 'status-badge unavailable';
                                     badge.innerHTML = `<i class="bi bi-wifi-off"></i> 离线`;
                                     badge.title = `API离线: ${status.error || '未知错误'}`;
                                 } else if (status.status === 'checking') {
-                                    badge.className = 'badge bg-warning text-dark api-status-badge';
+                                    badge.className = 'status-badge checking';
                                     badge.innerHTML = `<i class="bi bi-hourglass-split"></i> 检查中`;
                                     badge.title = '正在检查API状态...';
                                 } else {
-                                    badge.className = 'badge bg-secondary api-status-badge';
+                                    badge.className = 'status-badge unknown';
                                     badge.innerHTML = `<i class="bi bi-question-circle"></i> 未知`;
                                     badge.title = '状态未知';
                                 }
@@ -739,34 +724,18 @@
 
         // 手动触发API检查
         function checkAllApis() {
-            const badges = document.querySelectorAll('.api-status-badge');
+            const badges = document.querySelectorAll('.status-badge');
             badges.forEach(badge => {
-                badge.className = 'badge bg-warning text-dark api-status-badge';
+                badge.className = 'status-badge checking';
                 badge.innerHTML = `<i class="bi bi-hourglass-split"></i> 检查中`;
             });
 
             fetch('/check-api-status', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
-                    // 检查完成后会自动更新状态，这里只需要等待下一次轮询或立即调用一次更新
                     setTimeout(updateApiStatus, 1000);
                     
-                    // 显示提示
-                    const toast = document.createElement('div');
-                    toast.className = 'position-fixed bottom-0 end-0 p-3';
-                    toast.style.zIndex = '1100';
-                    toast.innerHTML = `
-                        <div class="toast show align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                            <div class="d-flex">
-                                <div class="toast-body">
-                                    <i class="bi bi-check-circle me-2"></i> API状态检查已完成
-                                </div>
-                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 3000);
+                    showToast('API状态检查已完成', 'success');
                 })
                 .catch(error => {
                     console.error('触发API检查失败:', error);
@@ -774,48 +743,269 @@
                 });
         }
 
+        // 显示Toast提示
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 p-3';
+            toast.style.zIndex = '1100';
+            const bgClass = type === 'success' ? 'bg-success' : (type === 'error' ? 'bg-danger' : 'bg-info');
+            toast.innerHTML = `
+                <div class="toast show align-items-center text-white bg-gradient ${bgClass} border-0 shadow-lg" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-${type === 'success' ? 'check-circle' : (type === 'error' ? 'exclamation-circle' : 'info-circle')} me-2"></i>${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
         // 复制到剪贴板功能
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                // 创建一个临时的toast提示
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 p-3';
-                toast.style.zIndex = '1100';
-                toast.innerHTML = `
-                    <div class="toast show align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                        <div class="d-flex">
-                            <div class="toast-body">
-                                <i class="bi bi-check-circle me-2"></i> 已复制: ${text}
-                            </div>
-                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                // 2秒后移除
-                setTimeout(() => {
-                    toast.remove();
-                }, 2000);
+                showToast(`已复制: ${text}`);
             }).catch(err => {
                 console.error('复制失败:', err);
                 alert('复制失败，请手动复制');
             });
         }
 
-        // 页面加载时立即获取状态
+        // ==================== 搜索和筛选功能 ====================
+        function filterProviders() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const filterValue = document.getElementById('filterSelect').value;
+            const providerCards = document.querySelectorAll('.provider-card');
+
+            providerCards.forEach(card => {
+                const providerName = card.querySelector('.card-header h5')?.textContent.toLowerCase() || '';
+                const providerUrl = card.querySelector('[title="API地址"]')?.textContent.toLowerCase() || '';
+                const models = card.querySelectorAll('.model-name');
+
+                let hasMatch = false;
+                if (searchValue) {
+                    // 搜索名称和URL
+                    if (providerName.includes(searchValue) || providerUrl.includes(searchValue)) {
+                        hasMatch = true;
+                    }
+                    // 搜索模型名称
+                    models.forEach(model => {
+                        if (model.textContent.toLowerCase().includes(searchValue)) {
+                            hasMatch = true;
+                        }
+                    });
+                } else {
+                    hasMatch = true;
+                }
+
+                // 状态筛选
+                const statusBadge = card.querySelector('.status-badge');
+                let statusMatch = false;
+                if (filterValue === 'all') {
+                    statusMatch = true;
+                } else if (statusBadge) {
+                    if (statusBadge.classList.contains(filterValue) ||
+                        statusBadge.textContent.toLowerCase().includes(
+                            filterValue === 'available' ? '可用' :
+                            filterValue === 'unavailable' ? '不可用' : '未知'
+                        )) {
+                        statusMatch = true;
+                    }
+                } else if (filterValue === 'unknown') {
+                    statusMatch = true;
+                }
+
+                if (hasMatch && statusMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterSelect').value = 'all';
+            filterProviders();
+        }
+
+        // ==================== 测试连接功能 ====================
+        function testConnection(providerId, button) {
+            const originalContent = button.innerHTML;
+            const originalClass = button.className;
+            const card = button.closest('.provider-card');
+            const statusBadge = card ? card.querySelector('.status-badge') : null;
+
+            // 开始测试状态
+            button.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> 测试中';
+            button.className = 'btn btn-sm btn-warning';
+            if (statusBadge) {
+                statusBadge.className = 'status-badge checking';
+                statusBadge.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> 检测中';
+            }
+
+            fetch(`/test-connection/${providerId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    button.innerHTML = '<i class="bi bi-check-circle"></i> ' + result.data.response_time + 'ms';
+                    button.className = 'btn btn-sm btn-success';
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge available';
+                        statusBadge.innerHTML = '<i class="bi bi-check-circle"></i> 可用 (' + result.data.response_time + 'ms)';
+                    }
+                    showToast(`连接成功! 响应时间: ${result.data.response_time}ms`);
+                } else {
+                    button.innerHTML = '<i class="bi bi-x-circle"></i> 失败';
+                    button.className = 'btn btn-sm btn-danger';
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge unavailable';
+                        statusBadge.innerHTML = '<i class="bi bi-x-circle"></i> 不可用';
+                    }
+                    showToast(`连接失败: ${result.message}`, 'error');
+                }
+            })
+            .catch(error => {
+                button.innerHTML = '<i class="bi bi-x-circle"></i> 错误';
+                button.className = 'btn btn-sm btn-danger';
+                if (statusBadge) {
+                    statusBadge.className = 'status-badge unavailable';
+                    statusBadge.innerHTML = '<i class="bi bi-x-circle"></i> 不可用';
+                }
+                showToast(`测试失败: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                // 5秒后恢复原状
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.className = originalClass;
+                }, 5000);
+            });
+        }
+
+        function testAllConnections() {
+            const testAllBtn = document.getElementById('testAllBtn');
+            const originalContent = testAllBtn.innerHTML;
+
+            testAllBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> 测试中';
+            testAllBtn.disabled = true;
+
+            fetch('/test-all-connections', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showToast(result.message);
+
+                    // 更新每个提供商的状态
+                    const providerCards = document.querySelectorAll('.provider-card');
+                    providerCards.forEach(card => {
+                        const statusBadge = card.querySelector('.status-badge');
+                        const providerId = card.dataset.id;
+                        const providerName = card.querySelector('[data-provider-name]')?.getAttribute('data-provider-name') || '';
+
+                        const providerResult = result.results.find(r => r.name === providerName || r.id === parseInt(providerId));
+
+                        if (statusBadge) {
+                            if (providerResult && providerResult.status === 'success') {
+                                statusBadge.className = 'status-badge available';
+                                statusBadge.innerHTML = `<i class="bi bi-check-circle"></i> 可用 (${providerResult.response_time}ms)`;
+                            } else {
+                                statusBadge.className = 'status-badge unavailable';
+                                statusBadge.innerHTML = '<i class="bi bi-x-circle"></i> 不可用';
+                            }
+                        }
+                    });
+                } else {
+                    showToast('批量测试失败: ' + result.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('批量测试失败: ' + error.message, 'error');
+            })
+            .finally(() => {
+                testAllBtn.innerHTML = originalContent;
+                testAllBtn.disabled = false;
+            });
+        }
+
+        // 页面加载时
         document.addEventListener('DOMContentLoaded', () => {
+            loadBrowserStatus();
             updateHealthStatus();
             updateApiStatus();
-            // 页面加载时自动触发一次检查
             checkAllApis();
         });
 
-        // 定期更新状态
-        setInterval(updateHealthStatus, 30000); // 每30秒更新系统健康状态
-        setInterval(updateApiStatus, 10000);    // 每10秒更新API状态
-    </script>
+        // 加载浏览器状态
+        async function loadBrowserStatus() {
+            try {
+                const response = await fetch('/api/browser/status');
+                const data = await response.json();
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+                const toggle = document.getElementById('browserToggle');
+                const desc = document.getElementById('browserToggleDesc');
+
+                if (toggle) {
+                    toggle.checked = data.enabled;
+                    desc.textContent = data.enabled
+                        ? '网页AI转换功能已启用'
+                        : '网页AI转换功能已禁用';
+                }
+            } catch (error) {
+                console.error('加载浏览器状态失败:', error);
+            }
+        }
+
+        // 切换浏览器功能
+        async function toggleBrowser() {
+            const toggle = document.getElementById('browserToggle');
+            const enabled = toggle.checked;
+
+            try {
+                const response = await fetch('/api/browser/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showToast(result.message, 'success');
+                    document.getElementById('browserToggleDesc').textContent =
+                        enabled ? '网页AI转换功能已启用' : '网页AI转换功能已禁用';
+                } else {
+                    showToast(result.error, 'error');
+                    toggle.checked = !enabled;
+                }
+            } catch (error) {
+                showToast('切换失败: ' + error.message, 'error');
+                toggle.checked = !enabled;
+            }
+        }
+
+        // 打开浏览器设置页面
+        function openBrowserSettings() {
+            window.location.href = '/browser-settings';
+        }
+
+        // 定期更新状态
+        setInterval(updateHealthStatus, 30000);
+        setInterval(updateApiStatus, 10000);
+    </script>
 </body>
 </html>

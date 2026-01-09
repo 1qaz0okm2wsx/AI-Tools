@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -7,26 +6,41 @@
     <title>API密钥管理 - <%= provider.name %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
     <style>
         .key-card {
-            transition: transform 0.2s;
+            transition: all var(--transition-slow);
         }
         .key-card:hover {
             transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
         }
         .masked-key {
-            font-family: monospace;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
             letter-spacing: 2px;
         }
         .status-badge {
             font-size: 0.8rem;
         }
+        .key-icon {
+            font-size: 2rem;
+            background: var(--gradient-primary);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .provider-info-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">AI模型管理工具</a>
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI模型管理工具
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -38,6 +52,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/logs">操作日志</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/scheduler">定时任务</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -45,26 +62,36 @@
 
     <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><%= provider.name %> - API密钥管理</h2>
+            <div>
+                <h1 class="mb-1"><i class="bi bi-key"></i> API密钥管理</h1>
+                <p class="text-muted mb-0"><%= provider.name %></p>
+            </div>
             <a href="/" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> 返回
             </a>
         </div>
 
         <!-- 提供商信息 -->
-        <div class="card mb-4">
+        <div class="card provider-info-card mb-4">
             <div class="card-body">
-                <h5 class="card-title">提供商信息</h5>
-                <p class="card-text">
-                    <strong>名称:</strong> <%= provider.name %><br>
-                    <strong>URL:</strong> <a href="<%= provider.url %>" target="_blank"><%= provider.url %></a>
-                </p>
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-building key-icon"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-1">提供商信息</h5>
+                        <p class="card-text mb-0">
+                            <strong>名称:</strong> <%= provider.name %> | 
+                            <strong>URL:</strong> <a href="<%= provider.url %>" target="_blank" class="text-decoration-none"><%= provider.url %></a>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- 添加API密钥按钮 -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4>API密钥列表</h4>
+            <h4 class="mb-0"><i class="bi bi-list-ul"></i> API密钥列表</h4>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKeyModal">
                 <i class="bi bi-plus-circle"></i> 添加API密钥
             </button>
@@ -74,8 +101,10 @@
         <div class="row">
             <% if (apiKeys.length === 0) { %>
                 <div class="col-12">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> 该提供商尚未添加任何API密钥。
+                    <div class="no-providers">
+                        <i class="bi bi-key"></i>
+                        <h3>暂无API密钥</h3>
+                        <p>该提供商尚未添加任何API密钥，点击上方按钮添加</p>
                     </div>
                 </div>
             <% } else { %>
@@ -83,38 +112,49 @@
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card key-card h-100">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span><%= key.key_name %></span>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-key me-2"></i>
+                                    <span><%= key.key_name %></span>
+                                </div>
                                 <span class="badge status-badge <%= key.is_active ? 'bg-success' : 'bg-secondary' %>">
                                     <%= key.is_active ? '启用' : '禁用' %>
                                 </span>
                             </div>
                             <div class="card-body">
-                                <p class="card-text">
-                                    <strong>API密钥:</strong><br>
-                                    <div class="input-group">
-                                        <input type="password" class="form-control form-control-sm" value="<%= key.api_key %>" readonly>
-                                        <button class="btn btn-outline-secondary btn-sm" type="button" onclick="toggleVisibility(this)">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                    </div>
+                                <p class="card-text mb-2">
+                                    <strong>API密钥:</strong>
                                 </p>
-                                <p class="card-text">
-                                    <small class="text-muted">创建时间: <%= key.formatted_time %></small>
+                                <div class="input-group mb-3">
+                                    <input type="password" class="form-control masked-key-input"
+                                           value="<%= key.masked_key %>"
+                                           data-key-id="<%= key.id %>"
+                                           data-provider-id="<%= provider.id %>"
+                                           readonly>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="toggleVisibility(this)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <p class="card-text mb-0">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> 创建时间: <%= key.formatted_time %>
+                                    </small>
                                 </p>
                             </div>
-                            <div class="card-footer d-flex justify-content-between">
-                                <form action="/api-keys/<%= key.id %>/toggle" method="post" style="display: inline;">
-                                    <button type="submit" class="btn btn-sm <%= key.is_active ? 'btn-warning' : 'btn-success' %>">
-                                        <i class="bi bi-<%= key.is_active ? 'pause' : 'play' %>"></i> 
-                                        <%= key.is_active ? '禁用' : '启用' %>
-                                    </button>
-                                </form>
-                                <form action="/api-keys/<%= key.id %>/delete" method="post" style="display: inline;" 
-                                      onsubmit="return confirm('确定要删除这个API密钥吗？此操作不可撤销。');">
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i> 删除
-                                    </button>
-                                </form>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex gap-2">
+                                    <form action="/api-keys/<%= key.id %>/toggle" method="post" style="flex: 1;">
+                                        <button type="submit" class="btn btn-sm <%= key.is_active ? 'btn-warning' : 'btn-success' %> w-100">
+                                            <i class="bi bi-<%= key.is_active ? 'pause' : 'play' %>"></i> 
+                                            <%= key.is_active ? '禁用' : '启用' %>
+                                        </button>
+                                    </form>
+                                    <form action="/api-keys/<%= key.id %>/delete" method="post" style="flex: 1;" 
+                                          onsubmit="return confirm('确定要删除这个API密钥吗？此操作不可撤销。');">
+                                        <button type="submit" class="btn btn-sm btn-danger w-100">
+                                            <i class="bi bi-trash"></i> 删除
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -128,25 +168,33 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addKeyModalLabel">添加API密钥</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="addKeyModalLabel">
+                        <i class="bi bi-plus-circle me-2"></i>添加API密钥
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="/provider/<%= provider.id %>/api-keys/add" method="post">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="keyName" class="form-label">密钥名称</label>
+                            <label for="keyName" class="form-label">
+                                <i class="bi bi-tag"></i> 密钥名称
+                            </label>
                             <input type="text" class="form-control" id="keyName" name="keyName" required 
                                    placeholder="例如: 主密钥、备用密钥等">
                         </div>
                         <div class="mb-3">
-                            <label for="apiKey" class="form-label">API密钥</label>
+                            <label for="apiKey" class="form-label">
+                                <i class="bi bi-key"></i> API密钥
+                            </label>
                             <textarea class="form-control" id="apiKey" name="apiKey" rows="3" required 
                                       placeholder="请输入完整的API密钥"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="submit" class="btn btn-primary">添加</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> 添加
+                        </button>
                     </div>
                 </form>
             </div>
@@ -155,7 +203,7 @@
 
     <!-- 消息提示 -->
     <% if (typeof success !== 'undefined') { %>
-        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast-container">
             <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-header bg-success text-white">
                     <i class="bi bi-check-circle-fill me-2"></i>
@@ -170,7 +218,7 @@
     <% } %>
 
     <% if (typeof error !== 'undefined') { %>
-        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast-container">
             <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-header bg-danger text-white">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -186,16 +234,43 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function toggleVisibility(btn) {
+        async function toggleVisibility(btn) {
             const inputGroup = btn.closest('.input-group');
             const input = inputGroup.querySelector('input');
             const icon = btn.querySelector('i');
+            
             if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('bi-eye', 'bi-eye-slash');
+                // 显示真实密钥 - 从服务器获取
+                const keyId = input.dataset.keyId;
+                const providerId = input.dataset.providerId;
+                
+                try {
+                    const response = await fetch(`/api-keys/${keyId}/reveal`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        input.value = data.api_key;
+                        input.type = 'text';
+                        icon.classList.replace('bi-eye', 'bi-eye-slash');
+                    } else {
+                        alert('获取密钥失败');
+                    }
+                } catch (error) {
+                    console.error('获取密钥失败:', error);
+                    alert('获取密钥失败');
+                }
             } else {
+                // 隐藏密钥 - 恢复masked显示
                 input.type = 'password';
                 icon.classList.replace('bi-eye-slash', 'bi-eye');
+                // 恢复masked值
+                const maskedValue = input.value.substring(0, 4) + '****' + input.value.substring(input.value.length - 4);
+                input.value = maskedValue;
             }
         }
     </script>

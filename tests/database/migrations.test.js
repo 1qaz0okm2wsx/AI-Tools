@@ -84,3 +84,4 @@ test('应该更新版本', async () => {
     expect.stringContaining('2.0.0')
   );
 });
+});

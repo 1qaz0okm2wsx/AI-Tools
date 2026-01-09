@@ -1,0 +1,39 @@
+{
+  "performance_mode": "maximum",
+  "browser": {
+    "pool": {
+      "maxInstances": 1,
+      "idleTimeout": 600000,
+      "acquireTimeout": 3000
+    },
+    "constants": {
+      "CONNECTION_TIMEOUT": 5,
+      "STEALTH_DELAY_MIN": 0.01,
+      "STEALTH_DELAY_MAX": 0.05,
+      "ACTION_DELAY_MIN": 0.05,
+      "ACTION_DELAY_MAX": 0.1,
+      "DEFAULT_ELEMENT_TIMEOUT": 2,
+      "FALLBACK_ELEMENT_TIMEOUT": 0.5,
+      "ELEMENT_CACHE_MAX_AGE": 2.0,
+      "STREAM_CHECK_INTERVAL_MIN": 0.05,
+      "STREAM_CHECK_INTERVAL_MAX": 0.2,
+      "STREAM_CHECK_INTERVAL_DEFAULT": 0.1,
+      "STREAM_SILENCE_THRESHOLD": 3.0,
+      "STREAM_MAX_TIMEOUT": 300,
+      "STREAM_INITIAL_WAIT": 120,
+      "STREAM_RERENDER_WAIT": 0.2,
+      "STREAM_CONTENT_SHRINK_TOLERANCE": 2,
+      "STREAM_MIN_VALID_LENGTH": 5,
+      "STREAM_STABLE_COUNT_THRESHOLD": 3,
+      "STREAM_SILENCE_THRESHOLD_FALLBACK": 5.0,
+      "MAX_MESSAGE_LENGTH": 100000,
+      "MAX_MESSAGES_COUNT": 100,
+      "STREAM_INITIAL_ELEMENT_WAIT": 5,
+      "STREAM_MAX_ABNORMAL_COUNT": 3,
+      "STREAM_MAX_ELEMENT_MISSING": 5,
+      "STREAM_CONTENT_SHRINK_THRESHOLD": 0.3,
+      "STREAM_USER_MSG_WAIT": 0.5,
+      "STREAM_PRE_BASELINE_DELAY": 0.1
+    }
+  }
+}

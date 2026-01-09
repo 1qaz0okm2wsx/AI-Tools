@@ -8,6 +8,11 @@ import { StreamContext } from './context.js';
 import { GeneratingStatusCache } from './statusCache.js';
 
 export class StreamMonitor {
+  /**
+   * @param {any} page
+   * @param {any} formatter
+   * @param {(() => boolean) | null} stopChecker
+   */
   constructor(page, formatter, stopChecker = null) {
     this.page = page;
     this.formatter = formatter;
@@ -19,6 +24,11 @@ export class StreamMonitor {
     this.BASELINE_POLLUTION_THRESHOLD = 20;
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} userInput
+   * @param {string | null} completionId
+   */
   async *monitor(selector, userInput = '', completionId = null) {
     logger.info('========== 流式监听启动 ==========');
     logger.debug(`[MONITOR] selector_raw=${selector}`);
@@ -49,13 +59,19 @@ export class StreamMonitor {
     logger.info('========== 流式监听结束 ==========');
   }
 
+  /**
+   * @param {string} selector
+   */
   async getLatestMessageSnapshot(selector) {
     try {
-      const result = await this.page.evaluate(sel => {
+      const result = await this.page.evaluate((/** @type {string} */ sel) => {
+        // eslint-disable-next-line no-undef
         const elements = document.querySelectorAll(sel);
         const groups = [];
 
+        // @ts-ignore - Browser context code
         for (const el of elements) {
+          // @ts-ignore - Browser context code
           const text = el.innerText || el.textContent || '';
           if (text.trim()) {
             groups.push({
@@ -79,6 +95,11 @@ export class StreamMonitor {
     }
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} userInput
+   * @param {any} ctx
+   */
   async waitForUserMessage(selector, userInput, ctx) {
     const USER_MSG_WAIT = webConfigService.getBrowserConstant('STREAM_USER_MSG_WAIT') || 1.5;
     const PRE_BASELINE_DELAY = webConfigService.getBrowserConstant('STREAM_PRE_BASELINE_DELAY') || 0.3;
@@ -122,6 +143,11 @@ export class StreamMonitor {
     ctx.activeTurnBaselineLen = ctx.userBaseline.textLen;
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} completionId
+   * @param {any} ctx
+   */
   async *monitorAIResponse(selector, completionId, ctx) {
     const STREAM_CHECK_INTERVAL = webConfigService.getBrowserConstant('STREAM_CHECK_INTERVAL_DEFAULT') || 0.3;
     const STREAM_SILENCE_THRESHOLD = webConfigService.getBrowserConstant('STREAM_SILENCE_THRESHOLD') || 6.0;
@@ -132,7 +158,6 @@ export class StreamMonitor {
 
     const startTime = Date.now();
     let silenceStart = null;
-    let lastText = '';
 
     while (Date.now() - startTime < STREAM_MAX_TIMEOUT * 1000) {
       if (this.shouldStop()) {
@@ -141,9 +166,9 @@ export class StreamMonitor {
       }
 
       const snapshot = await this.getLatestMessageSnapshot(selector);
-      const currentText = snapshot.groups.map(g => g.text).join('\n');
+      const currentText = snapshot.groups.map((/** @type {any} */ g) => g.text).join('\n');
 
-      const { diff, shouldUseMax, reason } = ctx.calculateDiff(currentText);
+      const { diff, reason } = ctx.calculateDiff(currentText);
 
       if (diff) {
         silenceStart = null;
@@ -181,6 +206,9 @@ export class StreamMonitor {
     return `chatcmpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  /**
+   * @param {number} seconds
+   */
   delay(seconds) {
     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
   }

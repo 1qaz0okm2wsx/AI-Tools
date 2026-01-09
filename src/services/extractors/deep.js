@@ -12,20 +12,29 @@ export class DeepBrowserExtractor extends BaseExtractor {
     this.name = 'Deep Browser Extractor';
   }
 
+  /**
+   * @param {any} page
+   * @param {string} selector
+   * @returns {Promise<string | null>}
+   */
   async extract(page, selector) {
     try {
-      const result = await page.evaluate(sel => {
+      const result = await page.evaluate((/** @type {string} */ sel) => {
+        // eslint-disable-next-line no-undef
         const element = document.querySelector(sel);
         if (!element) {
           return { success: false, text: '', error: 'Element not found' };
         }
 
         // 提取文本内容，包括子元素
+        /** @type {(node: any) => string} */
         const getTextContent = (node) => {
+          // eslint-disable-next-line no-undef
           if (node.nodeType === Node.TEXT_NODE) {
             return node.textContent;
           }
 
+          // eslint-disable-next-line no-undef
           if (node.nodeType === Node.ELEMENT_NODE) {
             const tagName = node.tagName.toLowerCase();
             // 跳过脚本和样式
@@ -54,21 +63,30 @@ export class DeepBrowserExtractor extends BaseExtractor {
       }
 
       return result.text;
-    } catch (error) {
-      logger.error(`[DEEP] 提取异常: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.error(`[DEEP] 提取异常: ${error?.message || String(error)}`);
       return null;
     }
   }
 
+  /**
+   * @param {any} page
+   * @param {string} selector
+   * @returns {Promise<string[]>}
+   */
   async extractMultiple(page, selector) {
     try {
-      const results = await page.evaluate(sel => {
+      const results = await page.evaluate((/** @type {string} */ sel) => {
+        // eslint-disable-next-line no-undef
         const elements = document.querySelectorAll(sel);
+        /** @type {(node: any) => string} */
         const getTextContent = (node) => {
+          // eslint-disable-next-line no-undef
           if (node.nodeType === Node.TEXT_NODE) {
             return node.textContent;
           }
 
+          // eslint-disable-next-line no-undef
           if (node.nodeType === Node.ELEMENT_NODE) {
             const tagName = node.tagName.toLowerCase();
             if (['script', 'style', 'noscript'].includes(tagName)) {
@@ -89,9 +107,9 @@ export class DeepBrowserExtractor extends BaseExtractor {
         }));
       }, selector);
 
-      return results.map(r => r.text);
-    } catch (error) {
-      logger.error(`[DEEP] 批量提取异常: ${error.message}`);
+      return results.map((/** @type {{ text: string }} */ r) => r.text);
+    } catch (/** @type {any} */ error) {
+      logger.error(`[DEEP] 批量提取异常: ${error?.message || String(error)}`);
       return [];
     }
   }

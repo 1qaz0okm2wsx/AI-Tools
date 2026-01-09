@@ -3,13 +3,20 @@
  */
 
 import express from 'express';
-import axios from 'axios';
 import ModelAnalyzerEnhanced from '../modelAnalyzer_enhanced.js';
 import { logOperation } from '../db_init.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
 // 错误响应辅助函数
+/**
+ * @param {any} res
+ * @param {number} status
+ * @param {string} message
+ * @param {string} [type='invalid_request_error']
+ * @param {string | null} [code]
+ */
 function sendError(res, status, message, type = 'invalid_request_error', code = null) {
     return res.status(status).json({
         error: {
@@ -22,6 +29,11 @@ function sendError(res, status, message, type = 'invalid_request_error', code = 
 }
 
 // 通用代理转发逻辑 (支持 Chat, Images, Audio, Videos)
+/**
+ * @param {any} req
+ * @param {any} res
+ * @param {string} endpoint
+ */
 async function handleProxyRequest(req, res, endpoint) {
     const { model, stream = false } = req.body;
     const body = req.body;
@@ -43,7 +55,7 @@ async function handleProxyRequest(req, res, endpoint) {
                 params = [];
             }
 
-            global.db.get(query, params, (err, row) => {
+            /** @type {any} */ (global).db.get(query, params, (/** @type {any} */ err, /** @type {any} */ row) => {
                 if (err) return reject(err);
                 resolve(row);
             });
@@ -90,11 +102,11 @@ async function handleProxyRequest(req, res, endpoint) {
         }
 
         // 记录使用情况
-        logOperation(global.db, 'PROXY_REQUEST', 'model', provider.id, provider.name, `代理请求: ${endpoint}, 模型: ${modelId}`, 'success', req);
+        logOperation(/** @type {any} */ (global).db, 'PROXY_REQUEST', 'model', provider.id, provider.name, `代理请求: ${endpoint}, 模型: ${modelId}`, 'success', req);
 
-    } catch (error) {
-        console.error(`代理请求 ${endpoint} 失败:`, error.message);
-        return sendError(res, error.response?.status || 500, error.message, 'proxy_error');
+    } catch (/** @type {any} */ error) {
+        logger.error(`代理请求 ${endpoint} 失败:`, error?.message || String(error));
+        return sendError(res, error?.response?.status || 500, error?.message || String(error), 'proxy_error');
     }
 }
 
@@ -115,8 +127,8 @@ router.get('/v1/videos/:id', (req, res) => handleProxyRequest(req, res, `videos/
 // 查询个人额度/使用情况
 router.get('/v1/dashboard/billing/usage', async (req, res) => {
     // 聚合 token_logs 表数据
-    global.db.all(`SELECT model_id, SUM(total_tokens) as tokens, SUM(cost) as total_cost FROM token_logs GROUP BY model_id`, (err, rows) => {
-        if (err) return sendError(res, 500, err.message);
+    /** @type {any} */ (global).db.all(`SELECT model_id, SUM(total_tokens) as tokens, SUM(cost) as total_cost FROM token_logs GROUP BY model_id`, (/** @type {any} */ err, /** @type {any} */ rows) => {
+        if (err) return sendError(res, 500, err?.message || String(err));
         res.json({ object: "list", data: rows });
     });
 });

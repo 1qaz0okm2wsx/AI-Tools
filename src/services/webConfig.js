@@ -4,10 +4,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 浏览器常量默认值
 const DEFAULT_BROWSER_CONSTANTS = {

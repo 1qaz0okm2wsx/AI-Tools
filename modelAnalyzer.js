@@ -6,6 +6,7 @@
 
 import axios from 'axios';
 import 'dotenv/config';
+import { logger } from './src/utils/logger.js';
 
 // 超时设置
 /** @type {number} */
@@ -69,7 +70,7 @@ class ModelAnalyzer {
                     return await this.detectGenericModels(provider);
             }
         } catch (error) {
-            console.error(`分析${provider.name}的模型时出错:`, error.message);
+            logger.error(`分析${provider.name}的模型时出错:`, error.message);
             return [];
         }
     }
@@ -120,11 +121,11 @@ class ModelAnalyzer {
         try {
             // 验证API密钥格式
             if (!provider.api_key || (typeof provider.api_key !== 'string' || !provider.api_key.startsWith('sk-'))) {
-                console.error('OpenAI API密钥格式无效，应以sk-开头');
+                logger.error('OpenAI API密钥格式无效，应以sk-开头');
                 return this.getDefaultOpenAIModels();
             }
 
-            console.log(`正在使用API密钥 ${provider.api_key.substring(0, 7)}... 检测OpenAI模型`);
+            logger.info(`正在使用API密钥 ${provider.api_key.substring(0, 7)}... 检测OpenAI模型`);
             
             // 默认OpenAI API地址
             let baseUrl = 'https://api.openai.com';
@@ -154,7 +155,7 @@ class ModelAnalyzer {
                 return model.id.includes('gpt') || model.id.includes('dall-e') || model.id.includes('whisper');
             });
 
-            console.log(`成功获取 ${filteredModels.length} 个OpenAI模型`);
+            logger.info(`成功获取 ${filteredModels.length} 个OpenAI模型`);
             return filteredModels.map(model => ({
                 id: model.id,
                 name: model.id,
@@ -164,22 +165,22 @@ class ModelAnalyzer {
             if (error.response) {
                 const status = error.response.status;
                 if (status === 401) {
-                    console.error('OpenAI API认证失败: API密钥无效或已过期');
+                    logger.error('OpenAI API认证失败: API密钥无效或已过期');
                 } else if (status === 403) {
-                    console.error('OpenAI API访问被拒绝: API密钥可能没有访问模型列表的权限');
+                    logger.error('OpenAI API访问被拒绝: API密钥可能没有访问模型列表的权限');
                 } else if (status === 404) {
-                    console.error('OpenAI API端点不存在: 可能API已更新，请检查最新文档');
+                    logger.error('OpenAI API端点不存在: 可能API已更新，请检查最新文档');
                 } else if (status === 429) {
-                    console.error('OpenAI API请求频率限制: 请稍后再试');
+                    logger.error('OpenAI API请求频率限制: 请稍后再试');
                 } else {
-                    console.error(`OpenAI API错误 (${status}): ${error.response.data?.error?.message || error.message}`);
+                    logger.error(`OpenAI API错误 (${status}): ${error.response.data?.error?.message || error.message}`);
                 }
             } else {
-                console.error('OpenAI模型检测失败:', error.message);
+                logger.error('OpenAI模型检测失败:', error.message);
             }
             
             // 返回默认的OpenAI模型列表，确保系统仍能工作
-            console.log('使用默认OpenAI模型列表作为备用');
+            logger.info('使用默认OpenAI模型列表作为备用');
             return this.getDefaultOpenAIModels();
         }
     }
@@ -189,7 +190,7 @@ class ModelAnalyzer {
      * @param {Provider} provider - 提供商信息
      * @returns {Promise<DetectedModel[]>} - 模型列表
      */
-    async detectAnthropicModels(/** @type {Provider} */ provider) {
+    async detectAnthropicModels(/** @type {Provider} */ _provider) {
         // Anthropic的模型列表通常是固定的，API不提供动态列表
         return [
             { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'Anthropic' },
@@ -206,7 +207,7 @@ class ModelAnalyzer {
      * @param {Provider} provider - 提供商信息
      * @returns {Promise<DetectedModel[]>} - 模型列表
      */
-    async detectGoogleModels(/** @type {Provider} */ provider) {
+    async detectGoogleModels(/** @type {Provider} */ _provider) {
         // Google的模型列表通常是固定的
         return [
             { id: 'gemini-pro', name: 'Gemini Pro', provider: 'Google' },
@@ -222,7 +223,7 @@ class ModelAnalyzer {
      * @param {Provider} provider - 提供商信息
      * @returns {Promise<DetectedModel[]>} - 模型列表
      */
-    async detectAzureModels(/** @type {Provider} */ provider) {
+    async detectAzureModels(/** @type {Provider} */ _provider) {
         // Azure OpenAI的模型通常需要手动配置，这里提供一些常见的模型
         return [
             { id: 'gpt-35-turbo', name: 'GPT-3.5 Turbo', provider: 'Azure OpenAI' },
@@ -258,7 +259,7 @@ class ModelAnalyzer {
                 provider: 'Hugging Face'
             }));
         } catch (/** @type {any} */ error) {
-            console.error('Hugging Face模型检测失败:', error.message);
+            logger.error('Hugging Face模型检测失败:', error.message);
             // 如果API调用失败，返回一些常见的模型
             return [
                 { id: 'gpt2', name: 'GPT-2', provider: 'Hugging Face' },
@@ -289,7 +290,7 @@ class ModelAnalyzer {
                 provider: 'Cohere'
             }));
         } catch (error) {
-            console.error('Cohere模型检测失败:', error.message);
+            logger.error('Cohere模型检测失败:', error.message);
             // 如果API调用失败，返回已知的Cohere模型
             return [
                 { id: 'command', name: 'Command', provider: 'Cohere' },
@@ -319,7 +320,7 @@ class ModelAnalyzer {
                 provider: 'Ollama'
             }));
         } catch (error) {
-            console.error('Ollama模型检测失败:', error.message);
+            logger.error('Ollama模型检测失败:', error.message);
             // 如果API调用失败，返回一些常见的Ollama模型
             return [
                 { id: 'llama2', name: 'Llama 2', provider: 'Ollama' },
@@ -348,7 +349,7 @@ class ModelAnalyzer {
                 provider: 'LM Studio'
             }));
         } catch (error) {
-            console.error('LM Studio模型检测失败:', error.message);
+            logger.error('LM Studio模型检测失败:', error.message);
             // 如果API调用失败，返回一些常见的LM Studio模型
             return [
                 { id: 'local-model', name: 'Local Model', provider: 'LM Studio' }
@@ -376,7 +377,7 @@ class ModelAnalyzer {
                 provider: 'OpenRouter'
             }));
         } catch (error) {
-            console.error('OpenRouter模型检测失败:', error.message);
+            logger.error('OpenRouter模型检测失败:', error.message);
             // 如果API调用失败，返回一些常见的OpenRouter模型
             return [
                 { id: 'openai/gpt-3.5-turbo', name: 'OpenAI GPT-3.5 Turbo', provider: 'OpenRouter' },
@@ -433,7 +434,7 @@ class ModelAnalyzer {
                     fullUrl = fullUrl.replace(/\/v\d+\/v\d+/gi, (match) => match.split('/')[1])
                                      .replace(/\/api\/api+/g, '/api');
                     
-                    console.log(`尝试路径: ${fullUrl} 使用认证方式: ${Object.keys(auth.headers)[0]}`);
+                    logger.info(`尝试路径: ${fullUrl} 使用认证方式: ${Object.keys(auth.headers)[0]}`);
 
                     // 尝试获取模型列表
                     const response = await axios.get(fullUrl, {
@@ -448,13 +449,13 @@ class ModelAnalyzer {
                     const models = this.parseModelsResponse(response.data, provider);
                     if (models.length > 0) {
                         results.push(...models);
-                        console.log(`从路径 ${path} 使用认证 ${Object.keys(auth.headers)[0]} 成功获取 ${models.length} 个模型`);
+                        logger.info(`从路径 ${path} 使用认证 ${Object.keys(auth.headers)[0]} 成功获取 ${models.length} 个模型`);
                         return results; // 找到模型后直接返回
                     }
                 } catch (error) {
-                    console.log(`路径 ${path} 使用认证 ${Object.keys(auth.headers)[0]} 失败: ${error.message}`);
+                    logger.info(`路径 ${path} 使用认证 ${Object.keys(auth.headers)[0]} 失败: ${error.message}`);
                     if (error.response) {
-                        console.log(`响应状态: ${error.response.status}, 响应数据:`, error.response.data);
+                        logger.info(`响应状态: ${error.response.status}, 响应数据:`, error.response.data);
                     }
                     // 继续尝试下一个组合
                 }
@@ -469,7 +470,7 @@ class ModelAnalyzer {
                     results.push(...docModels);
                 }
             } catch (error) {
-                console.log(`分析API文档失败: ${error.message}`);
+                logger.info(`分析API文档失败: ${error.message}`);
             }
         }
 
@@ -598,7 +599,7 @@ class ModelAnalyzer {
                     }
                 }
             } catch (error) {
-                console.log(`文档路径 ${path} 失败: ${error.message}`);
+                logger.info(`文档路径 ${path} 失败: ${error.message}`);
             }
         }
 
@@ -667,11 +668,11 @@ class ModelAnalyzer {
         // 使用正则表达式查找可能的模型名称
         // 这是一个简单的实现，实际应用中可能需要更复杂的HTML解析
         const modelPatterns = [
-            /model[:\s]+([a-zA-Z0-9\-_\.]+)/gi,
-            /gpt[-\s]*([0-9\.]+[a-z]*)/gi,
-            /claude[-\s]*([0-9\.]+[a-z]*)/gi,
-            /gemini[-\s]*([a-z0-9\-_\.]+)/gi,
-            /llama[-\s]*([0-9\.]+[a-z]*)/gi
+            /model[:\s]+([a-zA-Z0-9\-_.]+)/gi,
+            /gpt[-\s]*([0-9.]+[a-z]*)/gi,
+            /claude[-\s]*([0-9.]+[a-z]*)/gi,
+            /gemini[-\s]*([a-z0-9\-_.]+)/gi,
+            /llama[-\s]*([0-9.]+[a-z]*)/gi
         ];
 
         for (const pattern of modelPatterns) {
@@ -718,11 +719,11 @@ class ModelAnalyzer {
         try {
             // 智谱AI的API密钥通常以特定格式开头
             if (!provider.api_key) {
-                console.error('智谱AI API密钥未提供');
+                logger.error('智谱AI API密钥未提供');
                 return this.getDefaultZhipuModels();
             }
 
-            console.log(`正在使用API密钥 ${provider.api_key.substring(0, 7)}... 检测智谱AI模型`);
+            logger.info(`正在使用API密钥 ${provider.api_key.substring(0, 7)}... 检测智谱AI模型`);
 
             // 处理URL，确保不重复添加路径
             let baseUrl = provider.url.endsWith('/') ? provider.url.slice(0, -1) : provider.url;
@@ -743,7 +744,7 @@ class ModelAnalyzer {
             // 确保没有重复的斜杠
             modelsUrl = modelsUrl.replace(/([^:])\/\/+/g, '$1/');
 
-            console.log(`尝试获取智谱AI模型: ${modelsUrl}`);
+            logger.info(`尝试获取智谱AI模型: ${modelsUrl}`);
 
             // 发送请求
             const response = await axios.get(modelsUrl, {
@@ -764,16 +765,16 @@ class ModelAnalyzer {
                     created: model.created || null
                 }));
 
-                console.log(`✅ 成功获取 ${models.length} 个智谱AI模型`);
+                logger.info(`✅ 成功获取 ${models.length} 个智谱AI模型`);
                 return models;
             } else {
-                console.log('⚠️ 智谱AI API响应格式不符合预期，使用默认模型列表');
+                logger.info('⚠️ 智谱AI API响应格式不符合预期，使用默认模型列表');
                 return this.getDefaultZhipuModels();
             }
         } catch (error) {
-            console.error(`获取智谱AI模型失败:`, error.message);
+            logger.error(`获取智谱AI模型失败:`, error.message);
             if (error.response) {
-                console.error(`响应状态: ${error.response.status}, 响应数据:`, error.response.data);
+                logger.error(`响应状态: ${error.response.status}, 响应数据:`, error.response.data);
             }
             return this.getDefaultZhipuModels();
         }

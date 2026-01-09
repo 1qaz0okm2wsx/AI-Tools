@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="/css/style.css">
     <style>
         .task-card {
-            transition: transform 0.3s;
+            transition: all var(--transition-base);
         }
         .task-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-lg);
         }
         .status-indicator {
             width: 12px;
@@ -23,11 +23,11 @@
             margin-right: 8px;
         }
         .status-running {
-            background-color: #28a745;
+            background-color: var(--success-color);
             animation: pulse 2s infinite;
         }
         .status-stopped {
-            background-color: #dc3545;
+            background-color: var(--danger-color);
         }
         @keyframes pulse {
             0% { opacity: 1; }
@@ -35,32 +35,35 @@
             100% { opacity: 1; }
         }
         .scheduler-controls {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            background: var(--gradient-primary);
             color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+            padding: 1.5rem;
+            border-radius: var(--radius-xl);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
         }
         .task-status {
             font-size: 0.9rem;
         }
         .last-execution {
             font-size: 0.85rem;
-            color: #6c757d;
+            color: var(--gray-500);
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">AI模型管理工具</a>
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI模型管理工具
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="/">首页</a>
+                        <a class="nav-link" href="/">提供商列表</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/logs">操作日志</a>

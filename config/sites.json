@@ -314,12 +314,12 @@
     "stealth": false
   },
   "www.doubao.com": {
-    "url": "https://www.doubao.com",
+    "url": "https://www.doubao.com/chat",
     "selectors": {
-      "input_box": "textarea[data-testid=\"chat_input_input\"]",
-      "send_btn": "button[data-testid=\"chat_input_send_button\"]",
-      "result_container": "[data-testid=\"message_content\"]",
-      "new_chat_btn": "[data-testid=\"create_conversation_button\"]"
+      "input_box": "div[contenteditable=\"true\"], textarea",
+      "send_btn": "button[type=\"submit\"], button[aria-label*=\"send\"], button[class*=\"send\"]",
+      "result_container": ".message-content, [class*=\"message\"], [data-testid*=\"message\"]",
+      "new_chat_btn": "button[aria-label*=\"new\"], [data-testid*=\"new\"], [class*=\"new-chat\"]"
     },
     "workflow": [
       {
@@ -332,7 +332,55 @@
         "action": "WAIT",
         "target": "",
         "optional": false,
-        "value": "0.5"
+        "value": "1"
+      },
+      {
+        "action": "FILL_INPUT",
+        "target": "input_box",
+        "optional": false,
+        "value": null
+      },
+      {
+        "action": "CLICK",
+        "target": "send_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "KEY_PRESS",
+        "target": "Enter",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "STREAM_WAIT",
+        "target": "result_container",
+        "optional": false,
+        "value": null
+      }
+    ],
+    "stealth": false
+  },
+  "doubao.com": {
+    "url": "https://www.doubao.com/chat",
+    "selectors": {
+      "input_box": "div[contenteditable=\"true\"], textarea",
+      "send_btn": "button[type=\"submit\"], button[aria-label*=\"send\"], button[class*=\"send\"]",
+      "result_container": ".message-content, [class*=\"message\"], [data-testid*=\"message\"]",
+      "new_chat_btn": "button[aria-label*=\"new\"], [data-testid*=\"new\"], [class*=\"new-chat\"]"
+    },
+    "workflow": [
+      {
+        "action": "CLICK",
+        "target": "new_chat_btn",
+        "optional": true,
+        "value": null
+      },
+      {
+        "action": "WAIT",
+        "target": "",
+        "optional": false,
+        "value": "1"
       },
       {
         "action": "FILL_INPUT",

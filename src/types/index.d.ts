@@ -73,12 +73,20 @@ export interface TokenLog {
 
 // Express 相关类型
 export interface Request {
+  app?: {
+    locals?: {
+      db?: any;
+      dbPool?: any;
+      [key: string]: any;
+    };
+  };
   headers: {
     'x-forwarded-for'?: string;
     'user-agent'?: string;
     authorization?: string;
     [key: string]: any;
   };
+
   connection?: {
     remoteAddress?: string;
   };

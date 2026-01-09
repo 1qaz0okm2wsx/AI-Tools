@@ -120,9 +120,9 @@ class RequestManager {
   /**
    * 释放锁
    * @param {RequestContext} ctx
-   * @param {boolean} success
+   * @param {boolean} _success
    */
-  release(ctx, success = true) {
+  release(ctx, _success = true) {
     if (this.activeRequest?.requestId === ctx.requestId) {
       ctx.complete();
       this.activeRequest = null;

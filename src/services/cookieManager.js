@@ -4,11 +4,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { encryptionService } from '../utils/encryption.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class CookieManager {
   constructor() {

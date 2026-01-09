@@ -14,16 +14,16 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import sqlite3 from 'sqlite3';
+import fs from 'fs/promises';
 
-// 导入浏览器自动化模块
 import { browserService } from './src/services/browser/index.js';
 import { webConfigService } from './src/services/webConfig.js';
 import { logger } from './src/utils/logger.js';
 import { DatabasePool } from './src/services/database/pool.js';
 import configService from './src/services/config/index.js';
-import browserRouter from './routes/browser.js';
-import browserViewsRouter from './routes/browser_views.js';
+import memoryManager from './memory_manager.js';
+import apiChecker from './api_checker.js';
+import { oauthManager } from './src/services/oauthManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,8 +31,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 /** @type {number} */
 let PORT = 3000;
-/** @type {string} */
-let DB_PATH = './ai_models.db';
 /** @type {boolean} */
 let BROWSER_ENABLED = true;
 
@@ -50,17 +48,24 @@ app.use(express.static('public'));
 await configService.load();
 configService.validate();
 
-// 统一从配置服务获取运行参数
 const serverConfig = configService.getServerConfig();
 const dbConfig = configService.getDatabaseConfig();
-const browserConfig = configService.getBrowserConfig();
 const loggingConfig = configService.getLoggingConfig();
 
-PORT = serverConfig?.port || 3000;
-DB_PATH = dbConfig?.path || './ai_models.db';
-BROWSER_ENABLED = browserConfig?.enabled !== false;
+// 从浏览器开关配置文件读取状态
+try {
+    const browserEnabledPath = path.join(process.cwd(), 'config', 'browser-enabled.json');
+    const browserEnabledData = await fs.readFile(browserEnabledPath, 'utf-8');
+    const browserEnabledConfig = JSON.parse(browserEnabledData);
+    BROWSER_ENABLED = browserEnabledConfig.enabled !== false;
+    logger.info(`[BROWSER] 浏览器功能状态: ${BROWSER_ENABLED ? '已启用' : '已禁用'}`);
+} catch (error) {
+    logger.warn('[BROWSER] 无法读取浏览器开关配置，使用默认值: true');
+    BROWSER_ENABLED = true;
+}
 
-// 让 logger 按配置设置日志级别（避免各处直接依赖 process.env）
+PORT = serverConfig?.port || 3000;
+
 if (loggingConfig?.level) {
     logger.level = loggingConfig.level;
 }
@@ -78,7 +83,6 @@ await dbPool.acquire().then(({ db: dbConnection }) => {
   // @ts-ignore
   global.dbPool = dbPool;
 
-  // Express 推荐的共享依赖挂载点（后续逐步替换 global.*）
   app.locals.db = db;
   app.locals.dbPool = dbPool;
 
@@ -91,144 +95,11 @@ await dbPool.acquire().then(({ db: dbConnection }) => {
   process.exit(1);
 });
 
-// 创建表
+// 使用db_init.js的初始化函数来创建表
+import { initializeDatabase } from './db_init.js';
 if (db) {
-  db.serialize(() => {
-    // 创建AI服务商表
-    db.run(`CREATE TABLE IF NOT EXISTS providers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        url TEXT NOT NULL,
-        website TEXT,
-        api_key TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // 创建API密钥表
-    db.run(`CREATE TABLE IF NOT EXISTS api_keys (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        provider_id INTEGER,
-        key_name TEXT,
-        api_key TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (provider_id) REFERENCES providers (id)
-    )`);
-
-    // 创建API接口地址表
-    db.run(`CREATE TABLE IF NOT EXISTS api_endpoints (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        provider_id INTEGER,
-        endpoint_name TEXT,
-        endpoint_url TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (provider_id) REFERENCES providers (id)
-    )`);
-
-    // 创建模型表
-    db.run(`CREATE TABLE IF NOT EXISTS models (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        provider_id INTEGER,
-        model_name TEXT NOT NULL,
-        model_id TEXT NOT NULL,
-        description TEXT,
-        category TEXT,
-        context_window TEXT,
-        capabilities TEXT,
-        FOREIGN KEY (provider_id) REFERENCES providers (id)
-    )`);
-
-    // 创建操作日志表
-    db.run(`CREATE TABLE IF NOT EXISTS operation_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        operation_type TEXT NOT NULL,
-        target_type TEXT NOT NULL,
-        target_id INTEGER,
-        target_name TEXT,
-        details TEXT,
-        user_ip TEXT,
-        user_agent TEXT,
-        status TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // 创建令牌使用日志表
-    db.run(`CREATE TABLE IF NOT EXISTS token_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        provider_id INTEGER NOT NULL,
-        model_id TEXT NOT NULL,
-        api_key_id INTEGER,
-        request_tokens INTEGER DEFAULT 0,
-        response_tokens INTEGER DEFAULT 0,
-        total_tokens INTEGER DEFAULT 0,
-        cost DECIMAL(10, 6) DEFAULT 0.000000,
-        request_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-        response_time_ms INTEGER,
-        status TEXT NOT NULL,
-        error_message TEXT,
-        FOREIGN KEY (provider_id) REFERENCES providers (id) ON DELETE CASCADE,
-        FOREIGN KEY (api_key_id) REFERENCES api_keys (id) ON DELETE SET NULL
-    )`);
-
-    // 添加索引
-    db.run(`CREATE INDEX IF NOT EXISTS idx_providers_created_at ON providers(created_at DESC)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_models_provider_id ON models(provider_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_models_model_id ON models(model_id)`);
-    db.run(`CREATE INDEX IF NOT EXISTS idx_logs_created_at ON operation_logs(created_at DESC)`);
-  });
+  initializeDatabase(db);
 }
-
-// 健康检查
-/**
- * @param {any} req
- * @param {any} res
- */
-app.get('/health', async (req, res) => {
-    /** @type {{
-        status: string;
-        timestamp: string;
-        uptime: number;
-        database: { status: string; path: string };
-        memory: { used: number; total: number };
-        version: string;
-        features: { modelManagement: boolean; browserAutomation: boolean };
-        browser?: any;
-    }} */
-    const healthData = {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        database: {
-            status: 'connected',
-            path: DB_PATH
-        },
-        memory: {
-            used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100,
-            total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100
-        },
-        version: '2.0.0',
-        features: {
-            modelManagement: true,
-            browserAutomation: BROWSER_ENABLED
-        }
-    };
-
-    // 如果启用了浏览器功能，添加浏览器状态
-    if (BROWSER_ENABLED) {
-        try {
-            const browserHealth = await browserService.healthCheck();
-            healthData.browser = browserHealth;
-        } catch (error) {
-            healthData.browser = {
-                status: 'disconnected',
-                error: error instanceof Error ? error.message : String(error)
-            };
-        }
-    }
-
-    res.json(healthData);
-});
 
 // 根路径 - API信息
 /**
@@ -256,6 +127,12 @@ app.get('/api', (req, res) => {
                 audio: 'POST /v1/audio/transcriptions',
                 embeddings: 'POST /v1/embeddings'
             },
+            // 统一API网关 (推荐使用)
+            gateway: {
+                chat: 'POST /v1/ai/chat/completions',
+                models: 'GET /v1/ai/models',
+                info: 'GET /v1/ai/info'
+            },
             // 浏览器自动化 (如果启用)
             browser: BROWSER_ENABLED ? {
                 chat: 'POST /v1/browser/chat/completions',
@@ -263,12 +140,25 @@ app.get('/api', (req, res) => {
                 models: 'GET /v1/browser/models',
                 config: 'GET/POST /api/browser/config',
                 open: 'POST /api/browser/open',
-                cookies: 'GET/POST/DELETE /api/browser/cookies'
+                cookies: 'GET/POST/DELETE /api/browser/cookies',
+                cookieManager: {
+                    list: 'GET /api/cookies',
+                    get: 'GET /api/cookies/:domain',
+                    save: 'POST /api/cookies/:domain',
+                    delete: 'DELETE /api/cookies/:domain',
+                    exportAll: 'GET /api/cookies/export?format=json|netcookies|jsonl',
+                    exportDomain: 'GET /api/cookies/export/:domain',
+                    import: 'POST /api/cookies/import',
+                    domains: 'GET /api/cookies/domains',
+                    migrate: 'POST /api/cookies/migrate',
+                    reencrypt: 'POST /api/cookies/reencrypt'
+                }
             } : 'disabled',
             // 其他
             health: 'GET /health',
             logs: 'GET /logs',
             export: 'GET /export/json, /export/csv',
+            import: 'POST /import/json, /import/csv',
             database: {
                 stats: 'GET /api/database/stats',
                 optimize: 'POST /api/database/optimize',
@@ -291,24 +181,54 @@ import logsRouter from './routes/logs.js';
 import schedulerRouter from './routes/scheduler.js';
 import chatRouter from './routes/chat.js';
 import databaseRouter from './routes/database.js';
+import { startHealthCheck } from './routes/health.js';
+import exportRouter from './routes/export.js';
+import importRouter from './routes/import.js';
+import apiGatewayRouter from './routes/api_gateway.js';
+import cookieManagerRouter from './routes/cookie-manager.js';
+import apiDocsRouter from './routes/api_docs.js';
+import oauthRouter from './routes/oauth.js';
 
 // 注册API路由
-function registerRoutes() {
+async function registerRoutes() {
     // 初始化令牌日志表
     initTokenLogsTable();
-    
+
     try {
+        // 浏览器开关路由（始终加载）
+        import('./routes/browser_toggle.js').then(m => {
+            app.use('/', m.default);
+            logger.info('✅ 浏览器开关路由已加载');
+        }).catch(error => {
+            logger.warn('⚠️ 浏览器开关路由加载失败:', error instanceof Error ? error.message : String(error));
+        });
+
+        // 设置页面路由（始终加载）
+        import('./routes/settings.js').then(m => {
+            app.use('/', m.default);
+            logger.info('✅ 设置路由已加载');
+        }).catch(error => {
+            logger.warn('⚠️ 设置路由加载失败:', error instanceof Error ? error.message : String(error));
+        });
+
         app.use('/', indexRouter);
         app.use('/', providersRouter);
         app.use('/', apiKeysRouter);
         app.use('/', keyStatsRouter);
         app.use('/', tokenLogsRouter);
         app.use('/', modelsListRouter);
-        app.use('/', healthRouter);
         app.use('/', logsRouter);
         app.use('/', schedulerRouter);
         app.use('/', chatRouter);
-        
+        app.use('/', databaseRouter);
+        app.use('/', exportRouter);
+        app.use('/', importRouter);
+        app.use('/', healthRouter);
+        app.use('/', apiGatewayRouter);
+        app.use('/', cookieManagerRouter);
+        app.use('/', oauthRouter);
+        app.use('/', apiDocsRouter);
+
         logger.info('✅ API路由已加载');
     } catch (error) {
         logger.warn(`⚠️ 加载API路由失败: ${error instanceof Error ? error.message : String(error)}`);
@@ -317,29 +237,84 @@ function registerRoutes() {
 
 // 启动服务器
 async function startServer() {
+    // 初始化OAuth管理器
+    try {
+        await oauthManager.init();
+        logger.info('✅ OAuth管理器已初始化');
+    } catch (error) {
+        logger.warn(`⚠️ OAuth管理器初始化失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
     // 注册API路由
-    registerRoutes();
+    await registerRoutes();
+    
+    // 启动健康检查任务
+    try {
+        startHealthCheck();
+        logger.info('✅ 健康检查任务已启动');
+    } catch (error) {
+        logger.warn(`⚠️ 启动健康检查任务失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
+    // 启动内存自动清理功能，每30秒清理一次
+    memoryManager.startAutoCleanup(30000);
+    logger.info('✅ 内存自动清理已启动');
+    
+    // 获取所有提供商并启动API可用性检查
+    try {
+        const providers = await new Promise((resolve, reject) => {
+            db.all('SELECT id, name, url, api_key FROM providers', (/** @type {any} */ err, /** @type {any} */ rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+        
+        // 启动API可用性检查，每60秒检查一次
+        apiChecker.startPeriodicCheck(providers, 60000);
+        logger.info('✅ API可用性检查已启动');
+    } catch (error) {
+        logger.warn(`⚠️ 启动API可用性检查失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
+    // 服务器启动后自动检测所有提供商的模型
+    try {
+        const { autoDetectAllModels } = await import('./routes/providers.js');
+        await autoDetectAllModels(db);
+        logger.info('✅ 服务器启动时的模型自动检测已完成');
+    } catch (error) {
+        logger.warn(`⚠️ 服务器启动时的模型自动检测失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
     
     // 注册浏览器自动化路由（如果启用）- 放在API路由之后
     if (BROWSER_ENABLED) {
         try {
+            // 动态加载浏览器路由（仅在启用时）
+            const browserRouterModule = await import('./routes/browser.js');
+            const browserViewsRouterModule = await import('./routes/browser_views.js');
+
             await webConfigService.load();
             logger.info('✅ Web配置服务已加载');
-            
-            await browserService.initialize();
-            logger.info('✅ 浏览器服务已初始化');
-            
-            app.use('/', browserRouter);
-            app.use('/', browserViewsRouter);
+
+            // 尝试初始化浏览器服务，但不阻塞服务启动
+            try {
+                await browserService.initialize();
+                logger.info('✅ 浏览器服务已初始化');
+            } catch (browserError) {
+                logger.warn(`⚠️  浏览器服务初始化失败（浏览器功能将不可用）: ${browserError instanceof Error ? browserError.message : String(browserError)}`);
+                logger.warn(`💡 要使用浏览器功能，请先运行 "启动Chrome.bat" 启动Chrome远程调试模式`);
+                // 不抛出错误，继续启动服务
+            }
+
+            app.use('/', browserRouterModule.default);
+            app.use('/', browserViewsRouterModule.default);
             logger.info('✅ 浏览器自动化路由已注册');
         } catch (error) {
-            logger.warn(`⚠️ 浏览器服务初始化失败: ${error instanceof Error ? error.message : String(error)}`);
-            logger.info('浏览器自动化功能将不可用，但其他功能正常运行');
+            logger.warn(`⚠️  浏览器路由注册失败: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
-    
+
     // 错误处理中间件 - 必须在所有路由之后
-    app.use((/** @type {any} */ err, /** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) => {
+    app.use((/** @type {any} */ err, /** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ _next) => {
         logger.error('未处理的错误:', err);
         res.status(500).json({
             error: {
@@ -364,7 +339,7 @@ async function startServer() {
     });
     
     app.listen(PORT, () => {
-        console.log(`
+        logger.info(`
 ========================================
   AI模型管理工具 + Web-to-API
 ========================================
@@ -387,6 +362,12 @@ async function startServer() {
 process.on('SIGTERM', async () => {
     logger.info('收到 SIGTERM 信号，正在关闭服务...');
     
+    // 停止内存自动清理
+    memoryManager.stopAutoCleanup();
+    
+    // 停止API可用性检查
+    apiChecker.stopPeriodicCheck();
+    
     if (BROWSER_ENABLED) {
         await browserService.close();
     }
@@ -395,7 +376,7 @@ process.on('SIGTERM', async () => {
     if (db) {
         db.close((/** @type {any} */ err) => {
             if (err) {
-                console.error('关闭数据库连接时出错:', err instanceof Error ? err.message : String(err));
+                logger.error('关闭数据库连接时出错:', err instanceof Error ? err.message : String(err));
             }
             process.exit(0);
         });
@@ -407,6 +388,12 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
     logger.info('收到 SIGINT 信号，正在关闭服务...');
     
+    // 停止内存自动清理
+    memoryManager.stopAutoCleanup();
+    
+    // 停止API可用性检查
+    apiChecker.stopPeriodicCheck();
+    
     if (BROWSER_ENABLED) {
         await browserService.close();
     }
@@ -415,7 +402,7 @@ process.on('SIGINT', async () => {
     if (db) {
         db.close((/** @type {any} */ err) => {
             if (err) {
-                console.error('关闭数据库连接时出错:', err instanceof Error ? err.message : String(err));
+                logger.error('关闭数据库连接时出错:', err instanceof Error ? err.message : String(err));
             }
             process.exit(0);
         });

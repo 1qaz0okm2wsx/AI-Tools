@@ -4,6 +4,7 @@
  */
 
 import { logTokenUsage } from './routes/token_logs.js';
+import { logger } from './src/utils/logger.js';
 
 /**
  * 记录令牌使用情况的辅助函数
@@ -44,7 +45,7 @@ function recordTokenUsage(db, providerId, modelId, apiKeyId, response, responseT
             errorMessage
         );
     } catch (/** @type {any} */ error) {
-        console.error('记录令牌使用失败:', error.message);
+        logger.error('记录令牌使用失败:', error.message);
     }
 }
 

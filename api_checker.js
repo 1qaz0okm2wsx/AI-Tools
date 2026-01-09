@@ -3,10 +3,26 @@
  */
 
 import axios from 'axios';
+import { logger } from './src/utils/logger.js';
+
+/**
+ * @typedef {Object} ApiStatus
+ * @property {any} provider
+ * @property {string} url
+ * @property {'checking'|'available'|'unavailable'|'error'} status
+ * @property {number|null} responseTime
+ * @property {string|null} error
+ * @property {string} lastChecked
+ * @property {number|null} [statusCode] - HTTP 状态码（可选）
+ * @property {string|null} [server] - 服务器信息（可选）
+ * @property {'timeout'|'connection'|'other'|null} [errorType] - 错误类型（可选）
+ */
 
 const apiChecker = {
     // 存储API状态
     apiStatus: new Map(),
+    /** @type {NodeJS.Timeout | null} */
+    checkInterval: null,
 
     // 检测单个API的可用性
     /**
@@ -18,6 +34,7 @@ const apiChecker = {
         // 设置超时时间 (确保在 try 和 catch 块中都可用)
         const timeout = provider.timeout || 10000;
 
+        /** @type {ApiStatus} */
         let status = {
             provider: provider.name,
             url: provider.url,
@@ -69,7 +86,7 @@ const apiChecker = {
             checkUrl = checkUrl.replace(/\/models\/models/gi, '/models');
             checkUrl = checkUrl.replace(/\/api\/api/gi, '/api');
 
-            console.log(`[API Checker] Testing ${provider.name} at ${checkUrl}`);
+            logger.info(`[API Checker] Testing ${provider.name} at ${checkUrl}`);
 
             /** @type {any} */
             let headers = {};
@@ -87,37 +104,30 @@ const apiChecker = {
 
             const responseTime = Date.now() - startTime;
             status.status = 'available';
-            /** @type {number} */
             status.responseTime = responseTime;
-            /** @type {number} */
             status.statusCode = response.status;
 
             if (response.headers) {
-                /** @type {string} */
                 status.server = response.headers.server || 'Unknown';
             }
 
-            console.log(`✅ API可用: ${provider.name} (${provider.url}) - 响应时间: ${responseTime}ms`);
+            logger.info(`✅ API可用: ${provider.name} (${provider.url}) - 响应时间: ${responseTime}ms`);
 
-        } catch (error) {
+        } catch (/** @type {any} */ error) {
             const responseTime = Date.now() - startTime;
             status.status = 'unavailable';
-            /** @type {number} */
             status.responseTime = responseTime;
             status.error = error instanceof Error ? error.message : String(error);
 
             if (error.code === 'ECONNABORTED') {
-                /** @type {string} */
                 status.errorType = 'timeout';
-                console.log(`⏱️ API超时: ${provider.name} (${provider.url}) - 超时时间: ${timeout}ms`);
+                logger.info(`⏱️ API超时: ${provider.name} (${provider.url}) - 超时时间: ${timeout}ms`);
             } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-                /** @type {string} */
                 status.errorType = 'connection';
-                console.log(`🔌 连接失败: ${provider.name} (${provider.url}) - ${error instanceof Error ? error.message : String(error)}`);
+                logger.info(`🔌 连接失败: ${provider.name} (${provider.url}) - ${error instanceof Error ? error.message : String(error)}`);
             } else {
-                /** @type {string} */
                 status.errorType = 'other';
-                console.log(`❌ API不可用: ${provider.name} (${provider.url}) - ${error instanceof Error ? error.message : String(error)}`);
+                logger.info(`❌ API不可用: ${provider.name} (${provider.url}) - ${error instanceof Error ? error.message : String(error)}`);
             }
         }
 
@@ -131,36 +141,36 @@ const apiChecker = {
      * @returns {Promise<any[]>}
      */
     async checkAllApis(providers) {
-        console.log('\n开始检测所有API的可用性...');
+        logger.info('\n开始检测所有API的可用性...');
         /** @type {any[]} */
         const results = [];
-        const promises = [];
+        const _promises = [];
 
         for (const provider of providers) {
-            promises.push(
+            _promises.push(
                 this.checkApiAvailability(provider)
                     .then(status => {
                         results.push(status);
                         return status;
                     })
-                    .catch(error => {
-                        console.error(`检测API时出错: ${provider.name}`, error);
+                    .catch((/** @type {any} */ error) => {
+                        logger.error(`检测API时出错: ${provider.name}`, error);
                         return {
                             provider: provider.name,
                             url: provider.url,
                             status: 'error',
-                            error: error.message,
+                            error: error instanceof Error ? error.message : String(error),
                             lastChecked: new Date().toISOString()
                         };
                     })
             );
         }
 
-        await Promise.all(promises);
+        await Promise.all(_promises);
         const available = results.filter(r => r.status === 'available').length;
         const unavailable = results.filter(r => r.status === 'unavailable').length;
         const errors = results.filter(r => r.status === 'error').length;
-        console.log(`\nAPI可用性检测完成: ${available} 可用, ${unavailable} 不可用, ${errors} 错误\n`);
+        logger.info(`\nAPI可用性检测完成: ${available} 可用, ${unavailable} 不可用, ${errors} 错误\n`);
         return results;
     },
 
@@ -178,7 +188,7 @@ const apiChecker = {
         let totalResponseTime = 0;
         let responseTimeCount = 0;
 
-        for (const [name, status] of this.apiStatus.entries()) {
+        for (const [, status] of this.apiStatus.entries()) {
             switch (status.status) {
                 case 'available':
                     summary.available++;
@@ -232,7 +242,7 @@ const apiChecker = {
         this.checkInterval = setInterval(() => {
             this.checkAllApis(providers);
         }, intervalMs);
-        console.log(`启动API可用性定期检查，间隔: ${intervalMs/1000}秒`);
+        logger.info(`启动API可用性定期检查，间隔: ${intervalMs/1000}秒`);
     },
 
     // 停止定期检查
@@ -241,7 +251,7 @@ const apiChecker = {
             clearInterval(this.checkInterval);
             /** @type {null} */
             this.checkInterval = null;
-            console.log('已停止API可用性定期检查');
+            logger.info('已停止API可用性定期检查');
         }
     }
 };

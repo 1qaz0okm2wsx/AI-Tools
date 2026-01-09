@@ -1,0 +1,7 @@
+node_modules
+coverage
+dist
+logs
+cookies
+ai_models.db
+ai_models.db-*

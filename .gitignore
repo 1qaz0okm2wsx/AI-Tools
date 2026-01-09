@@ -2,31 +2,61 @@
 node_modules/
 package-lock.json
 
-# 测试
-coverage/
-*.lcov
-.nyc_output/
+# 环境变量（包含敏感信息）
+.env
+.env.local
+.env.*.local
 
-# 日志
-*.log
-logs/
-
-# 数据库
+# 数据库文件
 *.db
 *.sqlite
 *.sqlite3
 
-# 环境变量
-.env
-.env.local
+# 日志文件
+*.log
+logs/
+coverage/
 
-# 编辑器
+# Cookie和会话文件（包含敏感信息）
+cookies/
+sessions/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.temp
+nul
+firebase-debug.log
+{*.png}
+
+# IDE和编辑器
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# 操作系统
+# 测试覆盖率
+coverage/
+
+# 构建产物
+dist/
+build/
+
+# Windows
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride

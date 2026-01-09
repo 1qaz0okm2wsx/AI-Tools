@@ -28,8 +28,9 @@
  */
 
 import axios from 'axios';
-import { getAvailableApiKey, getAllAvailableApiKeys } from './routes/api_keys.js';
+import { getAllAvailableApiKeys } from './routes/api_keys.js';
 import { recordTokenUsage } from './token_usage.js';
+import { logger } from './src/utils/logger.js';
 
 class ModelAnalyzerEnhanced {
     /**
@@ -73,7 +74,7 @@ class ModelAnalyzerEnhanced {
                     }
                 });
 
-                console.log(`提供商 ${this.provider.name} 初始化了 ${keys.length} 个API密钥`);
+                logger.info(`提供商 ${this.provider.name} 初始化了 ${keys.length} 个API密钥`);
                 resolve(keys);
             });
         });
@@ -107,7 +108,7 @@ class ModelAnalyzerEnhanced {
 
         // 如果所有密钥都在黑名单中，强制重置黑名单（或者保持当前索引，等待重试逻辑处理）
         if (attempts >= this.apiKeys.length) {
-            console.warn(`提供商 ${this.provider.name} 所有密钥均在黑名单中，重置黑名单`);
+            logger.warn(`提供商 ${this.provider.name} 所有密钥均在黑名单中，重置黑名单`);
             this.blacklistedKeys.clear();
             this.currentKeyIndex = (oldKeyIndex + 1) % this.apiKeys.length;
         }
@@ -117,7 +118,7 @@ class ModelAnalyzerEnhanced {
         const oldKeyName = this.apiKeys[oldKeyIndex].key_name;
         const newKeyName = this.apiKeys[this.currentKeyIndex].key_name;
 
-        console.log(`提供商 ${this.provider.name} 轮换API密钥: ${oldKeyName} -> ${newKeyName} (原因: ${reason})`);
+        logger.info(`提供商 ${this.provider.name} 轮换API密钥: ${oldKeyName} -> ${newKeyName} (原因: ${reason})`);
     }
 
     // 暂时拉黑密钥
@@ -127,10 +128,10 @@ class ModelAnalyzerEnhanced {
      */
     blacklistKey(keyId, duration = 60000) {
         this.blacklistedKeys.add(keyId);
-        console.log(`密钥 ID ${keyId} 已暂时拉黑 ${duration}ms`);
+        logger.info(`密钥 ID ${keyId} 已暂时拉黑 ${duration}ms`);
         setTimeout(() => {
             this.blacklistedKeys.delete(keyId);
-            console.log(`密钥 ID ${keyId} 已移出黑名单`);
+            logger.info(`密钥 ID ${keyId} 已移出黑名单`);
         }, duration);
     }
 
@@ -140,7 +141,7 @@ class ModelAnalyzerEnhanced {
      */
     setMaxRequestsPerKey(count) {
         this.maxRequestsPerKey = count;
-        console.log(`提供商 ${this.provider.name} 每个密钥最大请求数设置为: ${count}`);
+        logger.info(`提供商 ${this.provider.name} 每个密钥最大请求数设置为: ${count}`);
     }
 
     // 使用当前API密钥发送请求
@@ -211,7 +212,7 @@ class ModelAnalyzerEnhanced {
                     };
                 }
 
-                console.log(`使用API密钥 ${keyName} 发送请求到 ${this.provider.name}`);
+                logger.info(`使用API密钥 ${keyName} 发送请求到 ${this.provider.name}`);
 
                 // 发送请求
                 const response = await axios(config);
@@ -256,7 +257,7 @@ class ModelAnalyzerEnhanced {
 
                 // 如果是认证错误或速率限制，尝试下一个密钥
                 if (axiosErr.response && (axiosErr.response.status === 401 || axiosErr.response.status === 403 || axiosErr.response.status === 429)) {
-                    console.log(`API密钥 ${keyName} 错误 (${axiosErr.response.status})，尝试下一个密钥`);
+                    logger.info(`API密钥 ${keyName} 错误 (${axiosErr.response.status})，尝试下一个密钥`);
                     // 暂时拉黑当前密钥
                     this.blacklistKey(currentKeyId);
                     this.rotateKey('error');
@@ -322,7 +323,7 @@ class ModelAnalyzerEnhanced {
 
             return [];
         } catch (error) {
-            console.error(`检测OpenAI模型失败: ${/** @type {Error} */ (error).message}`);
+            logger.error(`检测OpenAI模型失败: ${/** @type {Error} */ (error).message}`);
             throw error;
         }
     }
@@ -367,7 +368,7 @@ class ModelAnalyzerEnhanced {
             try {
                 return await this.detectOpenAIModels();
             } catch (error) {
-                console.error(`检测模型失败: ${/** @type {Error} */ (error).message}`);
+                logger.error(`检测模型失败: ${/** @type {Error} */ (error).message}`);
                 throw error;
             }
         }

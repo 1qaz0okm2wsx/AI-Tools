@@ -7,10 +7,11 @@ import express from 'express';
 import http from 'http';
 import { logOperation } from '../db_init.js';
 import memoryManager from '../memory_manager.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
-// 健康检查变量
+/** @type {{ timestamp: Date, status: string, data?: any, message?: string, error?: string } | null} */
 let lastHealthCheck = null;
 
 // 健康检查函数
@@ -38,8 +39,8 @@ function performHealthCheck() {
                     logOperation(global.db, 'HEALTH_CHECK', 'system', null, 'system',
                                 `健康检查失败: ${res.statusCode}`, 'error', null);
                 }
-            } catch (e) {
-                console.error('解析健康检查响应失败:', e);
+            } catch (/** @type {any} */ e) {
+                logger.error('解析健康检查响应失败:', e);
                 lastHealthCheck = {
                     timestamp: new Date(),
                     status: 'error',
@@ -51,7 +52,7 @@ function performHealthCheck() {
     });
 
     req.on('error', (e) => {
-        console.error('健康检查请求失败:', e);
+        logger.error('健康检查请求失败:', e);
         lastHealthCheck = {
             timestamp: new Date(),
             status: 'error',
@@ -64,7 +65,7 @@ function performHealthCheck() {
     });
 
     req.on('timeout', () => {
-        console.error('健康检查请求超时');
+        logger.error('健康检查请求超时');
         lastHealthCheck = {
             timestamp: new Date(),
             status: 'error',
@@ -83,11 +84,14 @@ function performHealthCheck() {
 
 // 启动健康检查
 function startHealthCheck() {
-    // 立即执行一次健康检查
-    performHealthCheck();
+    // 延迟10秒后再开始健康检查，确保服务器已完全启动
+    setTimeout(() => {
+        // 立即执行一次健康检查
+        performHealthCheck();
 
-    // 设置定期健康检查
-    setInterval(performHealthCheck, 60000); // 每分钟检查一次
+        // 设置定期健康检查
+        setInterval(performHealthCheck, 60000); // 每分钟检查一次
+    }, 10000);
 }
 
 // 健康检查端点
@@ -112,7 +116,7 @@ router.get('/health', (req, res) => {
             version: process.env.npm_package_version || '1.0.0',
             node: process.version
         });
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         res.status(500).json({
             status: 'error',
             message: error.message
@@ -138,7 +142,7 @@ router.get('/memory-status', (req, res) => {
         const memoryUsage = memoryManager.getRealtimeMemoryUsage();
         res.json(memoryUsage);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
 });
 
@@ -159,12 +163,15 @@ router.post('/cleanup-memory', (req, res) => {
 
         res.status(500).json({
             success: false,
-            message: `内存清理失败: ${error.message}`
+            message: `内存清理失败: ${error instanceof Error ? error.message : String(error)}`
         });
     }
 });
 
-// 格式化运行时间
+/**
+ * @param {number} seconds
+ * @returns {string}
+ */
 function formatUptime(seconds) {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);

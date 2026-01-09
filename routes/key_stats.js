@@ -96,7 +96,8 @@ router.get('/provider/:id/key-stats/api', (req, res) => {
             try {
                 // 创建增强的模型分析器
                 const analyzer = new ModelAnalyzerEnhanced(provider);
-                analyzer.setRotationStrategy('smart');
+                // @ts-ignore - rotationStrategy is a property, not a method
+                analyzer.rotationStrategy = 'smart';
 
                 // 初始化API密钥
                 await analyzer.initApiKeys();
@@ -110,10 +111,10 @@ router.get('/provider/:id/key-stats/api', (req, res) => {
                     summary: {
                         totalKeys: stats.length,
                         activeKeys: stats.filter(k => k.isActive).length,
-                        totalRequests: stats.reduce((sum, k) => sum + k.successCount + k.errorCount, 0),
+                        totalRequests: stats.reduce((sum, k) => sum + (/** @type {any} */ (k).successCount || 0) + k.errorCount, 0),
                         totalErrors: stats.reduce((sum, k) => sum + k.errorCount, 0),
-                        avgSuccessRate: stats.reduce((sum, k) => sum + k.successRate, 0) / stats.length,
-                        avgResponseTime: stats.reduce((sum, k) => sum + k.avgResponseTime, 0) / stats.length
+                        avgSuccessRate: stats.reduce((sum, k) => sum + (/** @type {any} */ (k).successRate || 0), 0) / stats.length,
+                        avgResponseTime: stats.reduce((sum, k) => sum + (/** @type {any} */ (k).avgResponseTime || 0), 0) / stats.length
                     }
                 });
             } catch (/** @type {any} */ error) {

@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { logOperation } from '../db_init.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
@@ -134,7 +135,7 @@ router.post('/clear-logs', (req, res) => {
     // 删除旧日志
     global.db.run(`DELETE FROM operation_logs WHERE created_at < ?`, [cutoffDate.toISOString()], function(err) {
         if (err) {
-            console.error('清理日志失败:', err);
+            logger.error('清理日志失败:', err);
             return res.redirect('/logs?error=' + encodeURIComponent('清理日志失败: ' + err.message));
         }
 

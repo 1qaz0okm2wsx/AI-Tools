@@ -6,18 +6,25 @@
 import express from 'express';
 import { logOperation } from '../db_init.js';
 import apiChecker from '../api_checker.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
+// 仪表盘页面
+router.get('/dashboard', (req, res) => {
+    res.render('dashboard');
+});
+
 // 主页路由
 router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
+    const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
     const page = parseInt(String(req.query.page)) || 1;
     const limit = 10; // 每页显示的提供商数量
     const offset = (page - 1) * limit;
 
     // 获取总提供商数
     // @ts-ignore
-    global.db.get(`SELECT COUNT(*) as total FROM providers`, (/** @type {Error | null} */ err, /** @type {{ total: number }} */ countResult) => {
+    db.get(`SELECT COUNT(*) as total FROM providers`, (/** @type {Error | null} */ err, /** @type {{ total: number }} */ countResult) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -27,7 +34,7 @@ router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /**
 
         // 获取当前页的提供商数据
         // @ts-ignore
-        global.db.all(`
+        db.all(`
             SELECT id, name, url, api_key, created_at
             FROM providers
             ORDER BY created_at DESC
@@ -62,14 +69,14 @@ router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /**
             // 为每个提供商获取模型 - 获取完整的模型信息
             for (const provider of providers) {
                 // @ts-ignore
-                global.db.all(`
+                db.all(`
                     SELECT model_name, model_id, description, category, context_window, capabilities
                     FROM models
                     WHERE provider_id = ?
                     ORDER BY model_name
                 `, [provider.id], (/** @type {Error | null} */ err, /** @type {import('../src/types/index.js').Model[]} */ models) => {
                     if (err) {
-                        console.error(`获取提供商 ${provider.name} 的模型失败:`, err.message);
+                        logger.error(`获取提供商 ${provider.name} 的模型失败:`, err.message);
                         models = [];
                     }
 
@@ -79,7 +86,7 @@ router.get('/', (/** @type {import('../src/types/index.js').Request} */ req, /**
                             try {
                                 model.capabilities = JSON.parse(String(model.capabilities));
                             } catch (/** @type {any} */ e) {
-                                console.error(`解析模型 ${model.model_name} 的capabilities失败:`, e.message);
+                                logger.error(`解析模型 ${model.model_name} 的capabilities失败:`, e.message);
                                 model.capabilities = [];
                             }
                         }
@@ -131,11 +138,12 @@ router.get('/billing', (req, res) => {
 // 手动检测所有提供商的模型
 router.post('/detect-all-models', async (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
     try {
+        const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
         const { autoDetectAllModels } = await import('./providers.js');
-        const models = await autoDetectAllModels();
+        const models = await autoDetectAllModels(db);
 
         // @ts-ignore
-        logOperation(global.db, 'DETECT_ALL_MODELS', 'system', null, 'system',
+        logOperation(db, 'DETECT_ALL_MODELS', 'system', null, 'system',
                     `手动检测所有提供商模型，共检测到 ${models.length} 个模型`, 'success', req);
 
         res.json({
@@ -145,7 +153,8 @@ router.post('/detect-all-models', async (/** @type {import('../src/types/index.j
         });
     } catch (/** @type {any} */ error) {
         // @ts-ignore
-        logOperation(global.db, 'DETECT_ALL_MODELS', 'system', null, 'system',
+        const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
+        logOperation(db, 'DETECT_ALL_MODELS', 'system', null, 'system',
                     `手动检测所有提供商模型失败: ${error.message}`, 'error', req);
 
         res.status(500).json({
@@ -178,10 +187,11 @@ router.get('/api-status', (/** @type {import('../src/types/index.js').Request} *
 // 手动触发API检查
 router.post('/check-api-status', async (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
     try {
+        const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
         // 使用 Promise 包装数据库查询
         const providers = await new Promise((/** @type {(value: import('../src/types/index.js').Provider[]) => void} */ resolve, /** @type {(reason: Error) => void} */ reject) => {
             // @ts-ignore
-            global.db.all('SELECT id, name, url FROM providers', (/** @type {Error | null} */ err, /** @type {import('../src/types/index.js').Provider[]} */ rows) => {
+            db.all('SELECT id, name, url FROM providers', (/** @type {Error | null} */ err, /** @type {import('../src/types/index.js').Provider[]} */ rows) => {
                 if (err) {
                     return reject(err);
                 }
@@ -194,7 +204,7 @@ router.post('/check-api-status', async (/** @type {import('../src/types/index.js
 
         // 记录操作日志
         // @ts-ignore
-        logOperation(global.db, 'CHECK_API_STATUS', 'system', null, 'system',
+        logOperation(db, 'CHECK_API_STATUS', 'system', null, 'system',
                     `手动检查API状态，共检查${providers.length}个提供商`, 'success', req);
 
         res.json({
@@ -208,12 +218,13 @@ router.post('/check-api-status', async (/** @type {import('../src/types/index.js
 });
 // 获取前端可用模型列表 (格式: { provider_id: [model_names...] })
 router.get('/api/models', (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
+    const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
     // 这里可以添加鉴权逻辑
     // const authHeader = req.headers.authorization;
     // if (!authHeader) return res.status(401).json({ success: false, message: "未授权访问" });
 
     // @ts-ignore
-    global.db.all(`
+    db.all(`
         SELECT p.id as provider_id, m.model_id
         FROM providers p
         LEFT JOIN models m ON p.id = m.provider_id
@@ -239,6 +250,84 @@ router.get('/api/models', (/** @type {import('../src/types/index.js').Request} *
             data: data
         });
     });
+});
+
+// 仪表盘统计数据API
+router.get('/api-dashboard-stats', async (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
+    try {
+        const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
+
+        // 获取提供商数量
+        const providersCount = await new Promise((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM providers', (/** @type {any} */ err, /** @type {{ count: number }} */ row) => {
+                if (err) return reject(err);
+                resolve(row.count);
+            });
+        });
+
+        // 获取模型数量
+        const modelsCount = await new Promise((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM models', (/** @type {any} */ err, /** @type {{ count: number }} */ row) => {
+                if (err) return reject(err);
+                resolve(row.count);
+            });
+        });
+
+        // 获取今日请求数
+        const todayStart = new Date().setHours(0, 0, 0, 0).toISOString();
+        const requestsCount = await new Promise((resolve, reject) => {
+            db.get('SELECT COUNT(*) as count FROM token_logs WHERE request_time >= ?', [todayStart],
+                (/** @type {any} */ err, /** @type {{ count: number }} */ row) => {
+                    if (err) return reject(err);
+                    resolve(row.count);
+                });
+        });
+
+        // 获取今日成本
+        const costResult = await new Promise((resolve, reject) => {
+            db.get('SELECT SUM(cost) as total FROM token_logs WHERE request_time >= ?', [todayStart],
+                (/** @type {any} */ err, /** @type {{ total: number }} */ row) => {
+                    if (err) return reject(err);
+                    resolve(row.total || 0);
+                });
+        });
+
+        res.json({
+            providers: providersCount,
+            models: modelsCount,
+            requests: requestsCount,
+            cost: parseFloat(costResult.toFixed(4))
+        });
+    } catch (/** @type {any} */ error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Token使用排行API
+router.get('/token-ranking', async (/** @type {import('../src/types/index.js').Request} */ req, /** @type {import('../src/types/index.js').Response} */ res) => {
+    try {
+        const db = req.app?.locals?.db || /** @type {any} */ (globalThis).db;
+
+        const todayStart = new Date().setHours(0, 0, 0, 0).toISOString();
+
+        const rows = await new Promise((resolve, reject) => {
+            db.all(`
+                SELECT model_id, COUNT(*) as requests, SUM(total_tokens) as tokens
+                FROM token_logs
+                WHERE request_time >= ?
+                GROUP BY model_id
+                ORDER BY tokens DESC
+                LIMIT 10
+            `, [todayStart], (/** @type {any} */ err, /** @type {any[]} */ rows) => {
+                if (err) return reject(err);
+                resolve(rows || []);
+            });
+        });
+
+        res.json(rows);
+    } catch (/** @type {any} */ error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 export default router;

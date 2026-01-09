@@ -13,7 +13,7 @@ const router = express.Router();
  */
 router.get('/api/database/stats', async (req, res) => {
   try {
-    const dbService = new DatabaseService(global.db);
+    const dbService = new DatabaseService(/** @type {any} */ (global.db));
     const stats = await dbService.getStats();
 
     res.json({
@@ -21,11 +21,11 @@ router.get('/api/database/stats', async (req, res) => {
       stats: stats,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     logger.error('获取数据库统计失败:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error?.message || String(error)
     });
   }
 });
@@ -35,7 +35,7 @@ router.get('/api/database/stats', async (req, res) => {
  */
 router.post('/api/database/optimize', async (req, res) => {
   try {
-    const dbService = new DatabaseService(global.db);
+    const dbService = new DatabaseService(/** @type {any} */ (global.db));
     await dbService.optimize();
 
     res.json({
@@ -43,11 +43,11 @@ router.post('/api/database/optimize', async (req, res) => {
       message: '数据库优化完成',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     logger.error('数据库优化失败:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error?.message || String(error)
     });
   }
 });
@@ -60,7 +60,7 @@ router.post('/api/database/backup', async (req, res) => {
     const { path } = req.body;
     const backupPath = path || `./backups/backup_${new Date().toISOString().replace(/[:.]/g, '-')}.db`;
 
-    const dbService = new DatabaseService(global.db);
+    const dbService = new DatabaseService(/** @type {any} */ (global.db));
     const result = await dbService.backup(backupPath);
 
     res.json({
@@ -69,11 +69,11 @@ router.post('/api/database/backup', async (req, res) => {
       backupPath: result,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     logger.error('数据库备份失败:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error?.message || String(error)
     });
   }
 });
@@ -83,7 +83,7 @@ router.post('/api/database/backup', async (req, res) => {
  */
 router.post('/api/database/migrate', async (req, res) => {
   try {
-    const dbService = new DatabaseService(global.db);
+    const dbService = new DatabaseService(/** @type {any} */ (global.db));
     await dbService.initialize();
 
     res.json({
@@ -91,11 +91,11 @@ router.post('/api/database/migrate', async (req, res) => {
       message: '数据库迁移完成',
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     logger.error('数据库迁移失败:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error?.message || String(error)
     });
   }
 });

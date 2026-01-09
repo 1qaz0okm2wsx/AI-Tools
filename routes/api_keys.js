@@ -5,6 +5,8 @@
 
 import express from 'express';
 import { logOperation } from '../db_init.js';
+import { logger } from '../src/utils/logger.js';
+import { encryptionService } from '../src/utils/encryption.js';
 
 const router = express.Router();
 
@@ -33,12 +35,29 @@ router.get('/provider/:id/api-keys', (req, res) => {
                 return res.status(500).json({ error: err.message });
             }
 
-            // 格式化创建时间
+            // 格式化创建时间并处理加密密钥
             apiKeys.forEach((/** @type {any} */ key) => {
                 key.formatted_time = new Date(key.created_at).toLocaleString('zh-CN');
+                
+                // 尝试解密API密钥（如果是加密格式）
+                let decryptedKey = key.api_key;
+                try {
+                    // 检查是否是JSON格式（加密后的数据）
+                    if (key.api_key && key.api_key.startsWith('{')) {
+                        const encryptedData = JSON.parse(key.api_key);
+                        if (encryptionService.isValid(encryptedData)) {
+                            decryptedKey = encryptionService.decrypt(encryptedData);
+                            logger.debug(`[ENCRYPTION] 成功解密API密钥: ${key.key_name}`);
+                        }
+                    }
+                } catch (error) {
+                    // 如果解密失败，假设是明文密钥
+                    logger.debug(`[ENCRYPTION] API密钥未加密或解密失败，使用明文: ${key.key_name}`);
+                }
+                
                 // 隐藏API密钥的大部分内容
-                if (key.api_key && key.api_key.length > 8) {
-                    key.masked_key = key.api_key.substring(0, 4) + '****' + key.api_key.substring(key.api_key.length - 4);
+                if (decryptedKey && decryptedKey.length > 8) {
+                    key.masked_key = decryptedKey.substring(0, 4) + '****' + decryptedKey.substring(decryptedKey.length - 4);
                 } else {
                     key.masked_key = '****';
                 }
@@ -62,7 +81,7 @@ router.get('/provider/:id/api-keys-json', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
 
-        // 获取所有API密钥
+        // 获取所有API密钥（返回masked密钥）
         /** @type {any} */ (global).db.all(`
             SELECT id, key_name, api_key, is_active
             FROM api_keys
@@ -72,6 +91,34 @@ router.get('/provider/:id/api-keys-json', (req, res) => {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
+
+            // 掩码处理API密钥（支持解密）
+            apiKeys.forEach((/** @type {any} */ key) => {
+                let decryptedKey = key.api_key;
+                
+                // 尝试解密API密钥（如果是加密格式）
+                try {
+                    if (key.api_key && key.api_key.startsWith('{')) {
+                        const encryptedData = JSON.parse(key.api_key);
+                        if (encryptionService.isValid(encryptedData)) {
+                            decryptedKey = encryptionService.decrypt(encryptedData);
+                        }
+                    }
+                } catch (error) {
+                    // 如果解密失败，假设是明文密钥
+                }
+                
+                // 生成掩码
+                if (decryptedKey && decryptedKey.length > 8) {
+                    key.masked_key = decryptedKey.substring(0, 4) + '****' + decryptedKey.substring(decryptedKey.length - 4);
+                } else if (decryptedKey) {
+                    key.masked_key = '****';
+                } else {
+                    key.masked_key = '';
+                }
+                // 删除真实密钥，防止泄露到前端
+                delete key.api_key;
+            });
 
             // 如果没有API密钥，添加一个空密钥字段供填写
             if (apiKeys.length === 0) {
@@ -93,21 +140,41 @@ router.get('/provider/:id/api-keys-json', (req, res) => {
                 if (apiKeys.length === 1 && apiKeys[0].api_key === '') {
                     apiKeys[0].key_name = '主密钥';
                     apiKeys[0].api_key = mainKey;
+                    // 设置masked_key
+                    if (mainKey && mainKey.length > 8) {
+                        apiKeys[0].masked_key = mainKey.substring(0, 4) + '****' + mainKey.substring(mainKey.length - 4);
+                    } else if (mainKey) {
+                        apiKeys[0].masked_key = '****';
+                    } else {
+                        apiKeys[0].masked_key = '';
+                    }
                     apiKeys[0].is_default = true;
+                    // 删除真实密钥
+                    delete apiKeys[0].api_key;
                 } else {
                     apiKeys.unshift({
                         id: null,
                         key_name: '主密钥',
                         api_key: mainKey,
+                        masked_key: mainKey && mainKey.length > 8 ? mainKey.substring(0, 4) + '****' + mainKey.substring(mainKey.length - 4) : '****',
                         is_active: 1,
                         is_default: true
                     });
+                    // 删除真实密钥
+                    apiKeys.unshift(apiKeys[apiKeys.length - 1]);
+                    delete apiKeys[0].api_key;
                 }
             }
 
-            // 无论如何，标记哪个是当前的默认密钥
+            // 无论如何，标记哪个是当前的默认密钥（通过masked_key比较）
             apiKeys.forEach((/** @type {any} */ key) => {
-                key.is_default = mainKey && key.api_key === mainKey;
+                // 对于现有密钥，无法直接比较api_key（已被删除），通过其他逻辑标记
+                // 如果密钥有ID，说明是已保存的密钥
+                if (key.id !== null) {
+                    key.is_default = false; // 已有ID的密钥暂不标记为默认
+                } else if (key.key_name === '主密钥') {
+                    key.is_default = true;
+                }
             });
 
             res.json({
@@ -250,6 +317,47 @@ router.post('/api-keys/:id/toggle', (req, res) => {
     });
 });
 
+// 获取真实API密钥（用于前端显示）- 支持解密
+router.post('/api-keys/:id/reveal', (req, res) => {
+    const apiKeyId = req.params.id;
+
+    /** @type {any} */ (global).db.get(`
+        SELECT api_key, key_name, provider_id
+        FROM api_keys
+        WHERE id = ?
+    `, [apiKeyId], (/** @type {Error} */ err, /** @type {any} */ row) => {
+        if (err) {
+            logger.error('获取API密钥失败:', err);
+            return res.status(500).json({ error: err.message });
+        }
+
+        if (!row) {
+            return res.status(404).json({ error: '未找到指定的API密钥' });
+        }
+
+        // 尝试解密API密钥
+        let decryptedKey = row.api_key;
+        try {
+            if (row.api_key && row.api_key.startsWith('{')) {
+                const encryptedData = JSON.parse(row.api_key);
+                if (encryptionService.isValid(encryptedData)) {
+                    decryptedKey = encryptionService.decrypt(encryptedData);
+                    logger.info(`[ENCRYPTION] 成功解密并显示API密钥: ${row.key_name}`);
+                }
+            }
+        } catch (/** @type {any} */ error) {
+            logger.error(`[ENCRYPTION] 解密API密钥失败: ${error?.message || String(error)}`);
+            // 如果解密失败，返回原始值
+        }
+
+        // 记录操作日志
+        logOperation(/** @type {any} */ (global).db, 'REVEAL', 'api_key', apiKeyId, row.key_name,
+                    `查看API密钥: ${row.key_name}`, 'success', req);
+
+        res.json({ api_key: decryptedKey });
+    });
+});
+
 // 获取可用的API密钥（用于API调用）
 /**
  * @param {number} providerId
@@ -270,7 +378,21 @@ function getAvailableApiKey(providerId, callback) {
             return callback(new Error('没有可用的API密钥'), null);
         }
 
-        callback(null, row.api_key);
+        // 尝试解密API密钥
+        let decryptedKey = row.api_key;
+        try {
+            if (row.api_key && row.api_key.startsWith('{')) {
+                const encryptedData = JSON.parse(row.api_key);
+                if (encryptionService.isValid(encryptedData)) {
+                    decryptedKey = encryptionService.decrypt(encryptedData);
+                }
+            }
+        } catch (/** @type {any} */ error) {
+            logger.error(`[ENCRYPTION] 解密API密钥失败: ${error?.message || String(error)}`);
+            // 如果解密失败，返回原始值
+        }
+
+        callback(null, decryptedKey);
     });
 }
 
@@ -293,7 +415,23 @@ function getAllAvailableApiKeys(providerId, callback) {
             return callback(new Error('没有可用的API密钥'), null);
         }
 
-        callback(null, rows);
+        // 解密所有API密钥
+        const decryptedRows = rows.map((/** @type {any} */ row) => {
+            let decryptedKey = row.api_key;
+            try {
+                if (row.api_key && row.api_key.startsWith('{')) {
+                    const encryptedData = JSON.parse(row.api_key);
+                    if (encryptionService.isValid(encryptedData)) {
+                        decryptedKey = encryptionService.decrypt(encryptedData);
+                    }
+                }
+            } catch (/** @type {any} */ error) {
+                logger.error(`[ENCRYPTION] 解密API密钥失败: ${error?.message || String(error)}`);
+            }
+            return { ...row, api_key: decryptedKey };
+        });
+
+        callback(null, decryptedRows);
     });
 }
 

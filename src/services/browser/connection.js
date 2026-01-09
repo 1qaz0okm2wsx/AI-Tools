@@ -2,7 +2,6 @@
  * 浏览器连接模块（带Cookie管理、登录检测、错误恢复和资源优化）
  */
 
-import puppeteer from 'puppeteer';
 import { logger } from '../../utils/logger.js';
 import { webConfigService } from '../webConfig.js';
 import { cookieManager } from '../cookieManager.js';
@@ -41,6 +40,32 @@ export class BrowserConnection {
 
         // 初始化cookie管理器
         await cookieManager.init();
+
+        // 检查Chrome是否已以远程调试模式启动
+        const port = process.env.BROWSER_PORT || 9222;
+        const debugUrl = `http://127.0.0.1:${port}/json/version`;
+
+        let chromeAvailable = false;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+          const response = await fetch(debugUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            chromeAvailable = true;
+            logger.info('✅ Chrome 远程调试已就绪');
+          } else {
+            throw new Error(`Chrome调试端口响应异常: ${response.status}`);
+          }
+        } catch (checkError) {
+          logger.warn(`⚠️  Chrome 未以远程调试模式启动 (端口: ${port})`);
+          logger.warn(`💡 请运行 "启动Chrome.bat" 启动浏览器`);
+          // 标记为未连接，但不阻塞服务启动
+          this.isConnected = false;
+          return;
+        }
 
         // 从浏览器池获取实例
         const instance = await browserPool.acquire();
@@ -110,7 +135,7 @@ export class BrowserConnection {
     // 页面加载失败恢复
     errorHandler.registerRecoveryCallback(
       ErrorTypes.PAGE_LOAD,
-      async (/** @type {Error} */ error, /** @type {any} */ context) => {
+      async (/** @type {Error} */ _error, /** @type {any} */ _context) => {
         logger.info('[RECOVERY] 尝试重新加载页面...');
         if (this.page) {
           await this.page.reload({ waitUntil: 'networkidle2' });
@@ -375,6 +400,7 @@ export class BrowserConnection {
 
       // 方法2: 检查页面特征元素
       const loginElements = await this.page.evaluate(() => {
+        // eslint-disable-next-line no-undef
         const loginSelectors = [
           '[data-testid*="login"]',
           '[aria-label*="login" i]',
@@ -399,6 +425,7 @@ export class BrowserConnection {
 
         const hasLoginButton = loginSelectors.some(sel => {
           try {
+            // eslint-disable-next-line no-undef
             return document.querySelector(sel) !== null;
           } catch {
             return false;
@@ -407,6 +434,7 @@ export class BrowserConnection {
 
         const hasUserElement = userSelectors.some(sel => {
           try {
+            // eslint-disable-next-line no-undef
             return document.querySelector(sel) !== null;
           } catch {
             return false;
@@ -540,12 +568,58 @@ export class BrowserConnection {
 
   async healthCheck() {
     try {
-      if (!this.browser) {
-        await this.initialize();
+      if (!this.isConnected) {
+        // 尝试重新初始化连接
+        const result = await this.initialize();
+        if (!result) {
+          // 如果仍然无法初始化，检查Chrome是否运行
+          const port = process.env.BROWSER_PORT || 9222;
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const response = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+              throw new Error('Chrome调试端口响应异常');
+            }
+
+            // Chrome运行中，可能连接失败
+            return {
+              status: 'unhealthy',
+              connected: false,
+              url: null,
+              title: null,
+              isLoggedIn: false,
+              error: 'Chrome运行中但无法连接，请检查Chrome是否正确启动'
+            };
+          } catch (checkError) {
+            // Chrome未运行
+            return {
+              status: 'unhealthy',
+              connected: false,
+              url: null,
+              title: null,
+              isLoggedIn: false,
+              error: 'Chrome未以远程调试模式启动，请运行"启动Chrome.bat"'
+            };
+          }
+        }
       }
 
-      const url = this.page ? this.page.url() : '';
-      const title = this.page ? await this.page.title() : '';
+      if (!this.isConnected || !this.page) {
+        return {
+          status: 'unhealthy',
+          connected: false,
+          url: null,
+          title: null,
+          isLoggedIn: false,
+          error: '浏览器未连接'
+        };
+      }
+
+      const url = this.page.url();
+      const title = await this.page.title();
       const isLoggedIn = await this.detectLoginStatus();
 
       return {

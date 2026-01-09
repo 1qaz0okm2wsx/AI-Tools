@@ -77,3 +77,4 @@ test('应该备份数据库', async () => {
 
   expect(result).toBe(backupPath);
 });
+});

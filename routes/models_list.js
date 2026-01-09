@@ -6,6 +6,7 @@ import express from 'express';
 import { logOperation } from '../db_init.js';
 import ModelAnalyzerEnhanced from '../modelAnalyzer_enhanced.js';
 import ModelAnalyzer from '../modelAnalyzer.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
@@ -116,7 +117,7 @@ router.get('/v1/models', async (req, res) => {
         }
 
     } catch (/** @type {any} */ error) {
-        console.error('列出模型失败:', error);
+        logger.error('列出模型失败:', error);
         return sendError(res, 500, `列出模型失败: ${error.message}`, 'internal_server_error');
     }
 });
@@ -160,7 +161,7 @@ router.get('/v1/models/:providerId', async (req, res) => {
                 WHERE provider_id = ? AND is_active = 1
             `, [provider.id], (/** @type {any} */ err, /** @type {any} */ row) => {
                 if (err) {
-                    console.error(`检查提供商${provider.name}的API密钥失败:`, err.message);
+                    logger.error(`检查提供商${provider.name}的API密钥失败:`, err.message);
                     resolve(false);
                 } else {
                     resolve(row.count > 1);
@@ -172,8 +173,12 @@ router.get('/v1/models/:providerId', async (req, res) => {
         let models;
         if (hasMultipleKeys) {
             const analyzer = new ModelAnalyzerEnhanced(provider);
-            analyzer.setRotationStrategy('smart');
-            analyzer.setMaxRequestsPerKey(30);
+            // @ts-ignore - rotationStrategy is a property, not a method
+            analyzer.rotationStrategy = 'smart';
+            // @ts-ignore - setMaxRequestsPerKey may not exist
+            if (analyzer.setMaxRequestsPerKey) {
+                analyzer.setMaxRequestsPerKey(30);
+            }
             models = await analyzer.detectModels();
         } else {
             // ModelAnalyzer 不需要构造函数参数，也不支持 setRotationStrategy 等方法
@@ -200,7 +205,7 @@ router.get('/v1/models/:providerId', async (req, res) => {
         });
 
     } catch (/** @type {any} */ error) {
-        console.error(`列出提供商 ${req.params.providerId} 的模型失败:`, error);
+        logger.error(`列出提供商 ${req.params.providerId} 的模型失败:`, error);
 
         // 记录错误日志
         logOperation(global.db, 'LIST_MODELS', 'provider', req.params.providerId, 'unknown',

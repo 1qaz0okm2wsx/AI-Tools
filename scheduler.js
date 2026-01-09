@@ -5,8 +5,10 @@
 
 import { logOperation } from './db_init.js';
 import apiChecker from './api_checker.js';
+import { logger } from './src/utils/logger.js';
 
 // 动态导入 providers 模块避免循环依赖
+/** @type {(() => Promise<any[]>) | null} */
 let autoDetectAllModels = null;
 
 async function loadProvidersModule() {
@@ -28,11 +30,11 @@ class Scheduler {
      */
     start() {
         if (this.isRunning) {
-            console.log('调度器已在运行中');
+            logger.info('调度器已在运行中');
             return;
         }
 
-        console.log('启动定时任务调度器...');
+        logger.info('启动定时任务调度器...');
         this.isRunning = true;
 
         // 启动所有定时任务
@@ -40,7 +42,7 @@ class Scheduler {
         this.startHealthCheckTask();
         this.startLogCleanupTask();
 
-        console.log('定时任务调度器启动完成');
+        logger.info('定时任务调度器启动完成');
     }
 
     /**
@@ -48,23 +50,23 @@ class Scheduler {
      */
     stop() {
         if (!this.isRunning) {
-            console.log('调度器未在运行');
+            logger.info('调度器未在运行');
             return;
         }
 
-        console.log('停止定时任务调度器...');
+        logger.info('停止定时任务调度器...');
         this.isRunning = false;
 
         // 清除所有定时任务
         this.tasks.forEach((task, name) => {
             if (task.interval) {
                 clearInterval(task.interval);
-                console.log(`已停止定时任务: ${name}`);
+                logger.info(`已停止定时任务: ${name}`);
             }
         });
 
         this.tasks.clear();
-        console.log('定时任务调度器已停止');
+        logger.info('定时任务调度器已停止');
     }
 
     /**
@@ -90,7 +92,7 @@ class Scheduler {
             lastExecution: new Date()
         });
 
-        console.log(`已启动模型检测定时任务，执行间隔: ${intervalMs / 1000 / 60 / 60} 小时`);
+        logger.info(`已启动模型检测定时任务，执行间隔: ${intervalMs / 1000 / 60 / 60} 小时`);
     }
 
     /**
@@ -98,14 +100,14 @@ class Scheduler {
      */
     async executeModelDetection() {
         try {
-            console.log('开始执行定时模型检测...');
+            logger.info('开始执行定时模型检测...');
             const startTime = Date.now();
 
             const detectFn = await loadProvidersModule();
             const models = await detectFn();
 
             const duration = Date.now() - startTime;
-            console.log(`定时模型检测完成，共检测到 ${models.length} 个模型，耗时 ${duration}ms`);
+            logger.info(`定时模型检测完成，共检测到 ${models.length} 个模型，耗时 ${duration}ms`);
 
             // 更新任务执行时间
             if (this.tasks.has('modelDetection')) {
@@ -115,12 +117,12 @@ class Scheduler {
             // 记录操作日志
             logOperation(global.db, 'AUTO_DETECT_MODELS', 'system', null, 'system', 
                         `定时模型检测完成，共检测到 ${models.length} 个模型`, 'success', null);
-        } catch (error) {
-            console.error('定时模型检测失败:', error);
+        } catch (/** @type {any} */ error) {
+            logger.error('定时模型检测失败:', error);
 
             // 记录错误日志
-            logOperation(global.db, 'AUTO_DETECT_MODELS', 'system', null, 'system', 
-                        `定时模型检测失败: ${error.message}`, 'error', null);
+            logOperation(global.db, 'AUTO_DETECT_MODELS', 'system', null, 'system',
+                        `定时模型检测失败: ${error?.message || String(error)}`, 'error', null);
         }
     }
 
@@ -129,7 +131,7 @@ class Scheduler {
      */
     startHealthCheckTask() {
         // 默认每5分钟执行一次
-        const intervalMs = process.env.HEALTH_CHECK_INTERVAL || 5 * 60 * 1000;
+        const intervalMs = Number(process.env.HEALTH_CHECK_INTERVAL) || 5 * 60 * 1000;
 
         // 设置定时任务
         const interval = setInterval(() => {
@@ -143,7 +145,7 @@ class Scheduler {
             lastExecution: new Date()
         });
 
-        console.log(`已启动健康检查定时任务，执行间隔: ${intervalMs / 1000 / 60} 分钟`);
+        logger.info(`已启动健康检查定时任务，执行间隔: ${intervalMs / 1000 / 60} 分钟`);
     }
 
     /**
@@ -151,27 +153,27 @@ class Scheduler {
      */
     async executeHealthCheck() {
         try {
-            console.log('开始执行定时健康检查...');
+            logger.info('开始执行定时健康检查...');
 
             // 获取所有提供商
             const providers = await new Promise((resolve, reject) => {
-                global.db.all(`SELECT id, name, url, api_key FROM providers`, (err, rows) => {
+                global.db.all(`SELECT id, name, url, api_key FROM providers`, (/** @type {any} */ err, /** @type {any} */ _rows) => {
                     if (err) {
                         return reject(err);
                     }
-                    resolve(rows);
+                    resolve(_rows);
                 });
             });
 
             if (providers.length === 0) {
-                console.log('没有找到任何提供商，跳过健康检查');
+                logger.info('没有找到任何提供商，跳过健康检查');
                 return;
             }
 
             // 执行API检查
-            const results = await apiChecker.checkAllApis(providers);
+            await apiChecker.checkAllApis(providers);
 
-            console.log(`定时健康检查完成，检查了 ${providers.length} 个提供商`);
+            logger.info(`定时健康检查完成，检查了 ${providers.length} 个提供商`);
 
             // 更新任务执行时间
             if (this.tasks.has('healthCheck')) {
@@ -181,12 +183,12 @@ class Scheduler {
             // 记录操作日志
             logOperation(global.db, 'AUTO_HEALTH_CHECK', 'system', null, 'system', 
                         `定时健康检查完成，检查了 ${providers.length} 个提供商`, 'success', null);
-        } catch (error) {
-            console.error('定时健康检查失败:', error);
+        } catch (/** @type {any} */ error) {
+            logger.error('定时健康检查失败:', error);
 
             // 记录错误日志
-            logOperation(global.db, 'AUTO_HEALTH_CHECK', 'system', null, 'system', 
-                        `定时健康检查失败: ${error.message}`, 'error', null);
+            logOperation(global.db, 'AUTO_HEALTH_CHECK', 'system', null, 'system',
+                        `定时健康检查失败: ${error?.message || String(error)}`, 'error', null);
         }
     }
 
@@ -210,7 +212,7 @@ class Scheduler {
             lastExecution: new Date()
         });
 
-        console.log(`已启动日志清理定时任务，执行间隔: ${intervalMs / 1000 / 60 / 60 / 24} 天`);
+        logger.info(`已启动日志清理定时任务，执行间隔: ${intervalMs / 1000 / 60 / 60 / 24} 天`);
     }
 
     /**
@@ -218,10 +220,10 @@ class Scheduler {
      */
     async executeLogCleanup() {
         try {
-            console.log('开始执行定时日志清理...');
+            logger.info('开始执行定时日志清理...');
 
             // 默认保留30天的日志
-            const daysToKeep = process.env.LOG_RETENTION_DAYS || 30;
+            const daysToKeep = Number(process.env.LOG_RETENTION_DAYS) || 30;
 
             // 计算截止日期
             const cutoffDate = new Date();
@@ -229,8 +231,8 @@ class Scheduler {
 
             // 清理操作日志
             const operationLogsResult = await new Promise((resolve, reject) => {
-                global.db.run(`DELETE FROM operation_logs WHERE created_at < ?`, 
-                [cutoffDate.toISOString()], function(err) {
+                global.db.run(`DELETE FROM operation_logs WHERE created_at < ?`,
+                [cutoffDate.toISOString()], function(/** @type {any} */ err) {
                     if (err) {
                         return reject(err);
                     }
@@ -240,8 +242,8 @@ class Scheduler {
 
             // 清理令牌日志
             const tokenLogsResult = await new Promise((resolve, reject) => {
-                global.db.run(`DELETE FROM token_logs WHERE request_time < ?`, 
-                [cutoffDate.toISOString()], function(err) {
+                global.db.run(`DELETE FROM token_logs WHERE request_time < ?`,
+                [cutoffDate.toISOString()], function(/** @type {any} */ err) {
                     if (err) {
                         return reject(err);
                     }
@@ -249,7 +251,7 @@ class Scheduler {
                 });
             });
 
-            console.log(`定时日志清理完成，清理了 ${operationLogsResult} 条操作日志和 ${tokenLogsResult} 条令牌日志`);
+            logger.info(`定时日志清理完成，清理了 ${operationLogsResult} 条操作日志和 ${tokenLogsResult} 条令牌日志`);
 
             // 更新任务执行时间
             if (this.tasks.has('logCleanup')) {
@@ -259,12 +261,12 @@ class Scheduler {
             // 记录操作日志
             logOperation(global.db, 'AUTO_LOG_CLEANUP', 'system', null, 'system', 
                         `定时日志清理完成，清理了 ${operationLogsResult} 条操作日志和 ${tokenLogsResult} 条令牌日志`, 'success', null);
-        } catch (error) {
-            console.error('定时日志清理失败:', error);
+        } catch (/** @type {any} */ error) {
+            logger.error('定时日志清理失败:', error);
 
             // 记录错误日志
-            logOperation(global.db, 'AUTO_LOG_CLEANUP', 'system', null, 'system', 
-                        `定时日志清理失败: ${error.message}`, 'error', null);
+            logOperation(global.db, 'AUTO_LOG_CLEANUP', 'system', null, 'system',
+                        `定时日志清理失败: ${error?.message || String(error)}`, 'error', null);
         }
     }
 
@@ -281,8 +283,8 @@ class Scheduler {
 
         // 如果是每天执行
         if (parts[2] === '*' && parts[3] === '*' && parts[4] === '*') {
-            const minutes = parseInt(parts[0]) || 0;
-            const hours = parseInt(parts[1]) || 0;
+            const minutes = Number(parts[0]) || 0;
+            const hours = Number(parts[1]) || 0;
 
             // 计算到下一次执行的时间（毫秒）
             const now = new Date();
@@ -299,9 +301,9 @@ class Scheduler {
 
         // 如果是每周执行
         if (parts[2] === '*' && parts[3] === '*' && parts[4] !== '*') {
-            const dayOfWeek = parseInt(parts[4]);
-            const minutes = parseInt(parts[0]) || 0;
-            const hours = parseInt(parts[1]) || 0;
+            const dayOfWeek = Number(parts[4]);
+            const minutes = Number(parts[0]) || 0;
+            const hours = Number(parts[1]) || 0;
 
             // 计算到下一次执行的时间（毫秒）
             const now = new Date();
@@ -325,8 +327,10 @@ class Scheduler {
 
     /**
      * 获取所有定时任务的状态
+     * @returns {{ isRunning: boolean; tasks: Array<{ name: string; displayName: string; schedule: string; lastExecution: Date; nextExecution?: Date }> }}
      */
     getTasksStatus() {
+        /** @type {Array<{ name: string; displayName: string; schedule: string; lastExecution: Date; nextExecution?: Date }>} */
         const tasks = [];
 
         this.tasks.forEach((task, name) => {

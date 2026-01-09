@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { logOperation } from '../db_init.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
@@ -30,9 +30,9 @@ function createTokenLogsTable(db) {
         FOREIGN KEY (api_key_id) REFERENCES api_keys (id) ON DELETE SET NULL
     )`, (/** @type {any} */ err) => {
         if (err) {
-            console.error('创建token_logs表失败:', err);
+            logger.error('创建token_logs表失败:', err);
         } else {
-            console.log('token_logs表创建成功');
+            logger.info('token_logs表创建成功');
 
             // 添加索引
             db.run(`CREATE INDEX IF NOT EXISTS idx_token_logs_provider_id ON token_logs(provider_id)`);
@@ -44,8 +44,8 @@ function createTokenLogsTable(db) {
 
 // 初始化表函数 - 由主程序调用
 export function initTokenLogsTable() {
-    if (global.db) {
-        createTokenLogsTable(global.db);
+    if (/** @type {any} */ (global).db) {
+        createTokenLogsTable(/** @type {any} */ (global).db);
     }
 }
 
@@ -71,7 +71,7 @@ function logTokenUsage(db, providerId, modelId, apiKeyId, requestTokens, respons
     `, [providerId, modelId, apiKeyId, requestTokens, responseTokens, totalTokens, cost, responseTimeMs, status, errorMessage], 
     function(/** @type {any} */ err) {
         if (err) {
-            console.error('记录令牌使用失败:', err);
+            logger.error('记录令牌使用失败:', err);
         }
     });
 }
@@ -96,7 +96,8 @@ router.get('/api/log/token', (req, res) => {
 
     // 构建查询条件
     let whereClause = 'WHERE 1=1';
-    let queryParams = [];
+    /** @type {any[]} */
+    const queryParams = [];
 
     if (providerId) {
         whereClause += ' AND tl.provider_id = ?';
@@ -119,7 +120,7 @@ router.get('/api/log/token', (req, res) => {
     }
 
     // 获取总数
-    global.db.get(`
+    /** @type {any} */ (global).db.get(`
         SELECT COUNT(*) as total FROM token_logs tl
         ${whereClause}
     `, queryParams, (/** @type {any} */ err, /** @type {any} */ countResult) => {
@@ -131,7 +132,7 @@ router.get('/api/log/token', (req, res) => {
         const totalPages = Math.ceil(totalLogs / limit);
 
         // 获取分页数据
-        global.db.all(`
+        /** @type {any} */ (global).db.all(`
             SELECT tl.id, tl.provider_id, p.name as provider_name, tl.model_id, 
                    tl.api_key_id, ak.key_name, tl.request_tokens, tl.response_tokens, 
                    tl.total_tokens, tl.cost, tl.request_time, tl.response_time_ms, 
@@ -186,7 +187,7 @@ router.get('/api/log/token/stats', (req, res) => {
 
     // 构建查询条件
     let whereClause = 'WHERE request_time >= ?';
-    let queryParams = [startDate.toISOString()];
+    const queryParams = [startDate.toISOString()];
 
     if (providerId) {
         whereClause += ' AND provider_id = ?';
@@ -199,7 +200,7 @@ router.get('/api/log/token/stats', (req, res) => {
     }
 
     // 获取统计数据
-    global.db.all(`
+    /** @type {any} */ (global).db.all(`
         SELECT 
             provider_id,
             model_id,

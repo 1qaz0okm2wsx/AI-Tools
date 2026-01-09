@@ -7,17 +7,19 @@
     <title>API密钥统计 - <%= provider.name %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .stats-card {
-            transition: transform 0.2s;
+            transition: all var(--transition-base);
         }
         .stats-card:hover {
             transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
         }
         .key-name {
             font-weight: 600;
-            color: #495057;
+            color: var(--gray-700);
         }
         .masked-key {
             font-family: monospace;
@@ -30,11 +32,11 @@
         }
         .stats-label {
             font-size: 0.9rem;
-            color: #6c757d;
+            color: var(--gray-500);
         }
         .chart-container {
             height: 300px;
-            margin-top: 20px;
+            margin-top: 1.25rem;
         }
         .active-indicator {
             width: 12px;
@@ -44,17 +46,19 @@
             margin-left: 5px;
         }
         .active {
-            background-color: #28a745;
+            background-color: var(--success-color);
         }
         .inactive {
-            background-color: #dc3545;
+            background-color: var(--danger-color);
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">AI模型管理工具</a>
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI模型管理工具
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -125,7 +129,7 @@
                                     <span class="badge <%= key.is_active ? 'bg-success' : 'bg-secondary' %>">
                                         <%= key.is_active ? '启用' : '禁用' %>
                                     </span>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="showKeyDetail(<%= key.id %>)">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showKeyDetail('<%= key.id %>')">
                                         <i class="bi bi-graph-up"></i> 查看统计
                                     </button>
                                 </div>
@@ -309,6 +313,8 @@
 
         // 显示密钥详情
         function showKeyDetail(keyId) {
+            // 确保ID为数字类型
+            keyId = parseInt(keyId);
             const modal = new bootstrap.Modal(document.getElementById('keyDetailModal'));
 
             // 显示加载中

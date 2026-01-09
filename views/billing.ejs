@@ -6,23 +6,113 @@
     <title>额度与使用统计 - AI模型管理工具</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .header-section {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 2.5rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            box-shadow: var(--shadow-md);
         }
-        body { background-color: #f8f9fa; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .header-section { background: var(--primary-gradient); color: white; padding: 40px 0; margin-bottom: 30px; border-radius: 0 0 20px 20px; }
+        .header-section h1 {
+            margin: 0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: var(--radius-2xl);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: all var(--transition-slow);
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+        .stat-icon-wrapper {
+            width: 4rem;
+            height: 4rem;
+            margin: 0 auto 1rem;
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stat-icon {
+            font-size: 2rem;
+        }
+        .stat-icon.primary {
+            background: var(--primary-100);
+            color: var(--primary-color);
+        }
+        .stat-icon.success {
+            background: var(--success-bg);
+            color: var(--success-color);
+        }
+        .stat-icon.warning {
+            background: var(--warning-bg);
+            color: var(--warning-color);
+        }
+        .stat-icon.danger {
+            background: var(--danger-bg);
+            color: var(--danger-color);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+        .stat-label {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+            margin-bottom: 0;
+        }
+        .chart-container {
+            height: 400px;
+            margin-top: 2rem;
+        }
+        .usage-table {
+            background: white;
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+        .usage-table thead th {
+            background: var(--gray-50);
+            color: var(--gray-700);
+            font-weight: 600;
+        }
+        .usage-table tbody tr:hover td {
+            background: var(--gray-50);
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">AI模型管理工具</a>
-            <div class="collapse navbar-collapse">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI模型管理工具
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">首页</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="/billing">额度统计</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">提供商列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/billing">额度统计</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -31,59 +121,127 @@
     <div class="header-section">
         <div class="container text-center">
             <h1><i class="bi bi-wallet2"></i> 额度与使用情况</h1>
-            <p class="lead">监控各模型、各渠道的 Token 消耗与成本</p>
+            <p class="lead mb-0">监控各模型、各渠道的 Token 消耗与成本</p>
         </div>
     </div>
 
     <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0">使用详情</h5>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>模型 ID</th>
-                                    <th>累计 Token</th>
-                                    <th>预估成本 ($)</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="billingTable">
-                                <tr><td colspan="4" class="text-center">加载中...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+        <!-- 统计卡片 -->
+        <div class="stats-grid mb-4" id="statsCards">
+            <div class="stat-card">
+                <div class="stat-icon-wrapper primary">
+                    <i class="bi bi-activity stat-icon primary"></i>
+                </div>
+                <div class="stat-value" id="totalTokens">-</div>
+                <div class="stat-label">总请求数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrapper success">
+                    <i class="bi bi-check-circle stat-icon success"></i>
+                </div>
+                <div class="stat-value" id="totalSuccess">-</div>
+                <div class="stat-label">成功请求</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrapper warning">
+                    <i class="bi bi-exclamation-triangle stat-icon warning"></i>
+                </div>
+                <div class="stat-value" id="totalErrors">-</div>
+                <div class="stat-label">失败请求</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon-wrapper danger">
+                    <i class="bi bi-currency-dollar stat-icon danger"></i>
+                </div>
+                <div class="stat-value" id="totalCost">-</div>
+                <div class="stat-label">预估成本 ($)</div>
+            </div>
+        </div>
+
+        <!-- 使用详情表格 -->
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-people me-2"></i>使用详情
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="usage-table table table-hover">
+                        <thead>
+                            <tr>
+                                <th>模型 ID</th>
+                                <th>请求数</th>
+                                <th>成功</th>
+                                <th>失败</th>
+                                <th>成功率</th>
+                                <th>预估成本 ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usageTable">
+                            <tr><td colspan="6" class="text-center"><div class="spinner-border text-center" role="status"><span class="visually-hidden">加载中...</span></div></td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            fetch('/v1/dashboard/billing/usage')
-                .then(res => res.json())
-                .then(result => {
-                    const tbody = document.getElementById('billingTable');
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/v1/dashboard/billing/usage');
+                const result = await response.json();
+                
+                const tbody = document.getElementById('usageTable');
+                const totalTokensEl = document.getElementById('totalTokens');
+                const totalSuccessEl = document.getElementById('totalSuccess');
+                const totalErrorsEl = document.getElementById('totalErrors');
+                const totalCostEl = document.getElementById('totalCost');
+
+                if (result.data && result.data.length > 0) {
                     tbody.innerHTML = '';
-                    if (result.data && result.data.length > 0) {
-                        result.data.forEach(row => {
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td><code>${row.model_id}</code></td>
-                                <td>${row.tokens.toLocaleString()}</td>
-                                <td>$${row.total_cost.toFixed(4)}</td>
-                                <td><a href="/logs?model=${row.model_id}" class="btn btn-sm btn-outline-primary">查看日志</a></td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                    } else {
-                        tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无使用记录</td></tr>';
-                    }
-                });
+                    
+                    let totalTokens = 0;
+                    let totalSuccess = 0;
+                    let totalErrors = 0;
+                    let totalCost = 0;
+                    
+                    result.data.forEach(row => {
+                        totalTokens += row.requests || 0;
+                        totalSuccess += row.success || 0;
+                        totalErrors += row.errors || 0;
+                        totalCost += row.cost || 0;
+                        
+                        const successRate = row.requests > 0 ? ((row.success / row.requests) * 100).toFixed(1) : '0';
+                        
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><code style="font-family: var(--font-mono); font-size: 0.875rem;"><%= row.model_id %></code></td>
+                            <td><%= (row.requests || 0).toLocaleString() %></td>
+                            <td><span class="badge bg-success"><%= (row.success || 0).toLocaleString() %></span></td>
+                            <td><span class="badge bg-danger"><%= (row.errors || 0).toLocaleString() %></span></td>
+                            <td><span class="text-muted">${successRate}%</span></td>
+                            <td>$${(row.cost || 0).toFixed(4)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    totalTokensEl.textContent = totalTokens.toLocaleString();
+                    totalSuccessEl.textContent = totalSuccess.toLocaleString();
+                    totalErrorsEl.textContent = totalErrors.toLocaleString();
+                    totalCostEl.textContent = totalCost.toFixed(4);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无使用记录</td></tr>';
+                    totalTokensEl.textContent = '0';
+                    totalSuccessEl.textContent = '0';
+                    totalErrorsEl.textContent = '0';
+                    totalCostEl.textContent = '0.00';
+                }
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+                document.getElementById('usageTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';
+            }
         });
     </script>
 </body>

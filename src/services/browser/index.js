@@ -37,8 +37,10 @@ class BrowserService {
   /**
    * @param {any[]} messages - 消息列表
    * @param {boolean} stream - 是否使用流式传输
+   * @returns {AsyncGenerator<any, void, unknown>}
    */
   async *executeWorkflow(messages, stream = true) {
+    // @ts-ignore - workflow.executeWorkflow may accept 2 arguments
     yield* this.workflow.executeWorkflow(messages, stream);
   }
 

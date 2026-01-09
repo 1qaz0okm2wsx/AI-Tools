@@ -263,7 +263,7 @@ const customFormat = winston.format.printf(/** @type {any} */ ({ level, message,
 
 // 创建日志器
 export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: 'info',
   format: winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     customFormat

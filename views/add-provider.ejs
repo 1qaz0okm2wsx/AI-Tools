@@ -12,58 +12,46 @@ if (typeof savedForm === 'undefined') {
     <title>添加AI服务提供商 - AI模型管理工具</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --success-gradient: linear-gradient(135deg, #13B497 0%, #59D4A8 100%);
-            --warning-gradient: linear-gradient(135deg, #FFB347 0%, #FFCC33 100%);
-            --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            --hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-
-        body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 0;
-        }
-
         .form-container {
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
-            background-color: white;
-            border-radius: 20px;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s ease;
+            max-width: 700px;
+            margin: 3rem auto;
+            padding: 2.5rem;
+            background: white;
+            border-radius: var(--radius-3xl);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
         }
 
-        .form-container:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--hover-shadow);
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
         }
 
         .form-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 2.5rem;
         }
 
         .form-header i {
-            font-size: 3rem;
-            background: var(--primary-gradient);
+            font-size: 3.5rem;
+            background: var(--gradient-primary);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 15px;
+            margin-bottom: 1rem;
         }
 
         .form-header h2 {
-            background: var(--primary-gradient);
+            background: var(--gradient-primary);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -71,99 +59,48 @@ if (typeof savedForm === 'undefined') {
         }
 
         .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
+            margin-bottom: 1.5rem;
         }
 
         .form-label i {
             margin-right: 8px;
-            color: #764ba2;
-        }
-
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-            transition: all 0.2s;
-            font-size: 1rem;
-        }
-
-        .form-control:focus {
-            border-color: #764ba2;
-            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+            color: var(--primary-color);
         }
 
         .btn-group {
             display: flex;
             justify-content: space-between;
-            margin-top: 30px;
-            gap: 15px;
+            margin-top: 2rem;
+            gap: 1rem;
         }
 
-        .btn-primary {
-            background: var(--primary-gradient);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 20px;
-            font-weight: 600;
-            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
-            transition: all 0.2s;
+        .endpoint-card, .api-key-card {
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-base);
+            border: 1px solid var(--gray-200);
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.5);
-        }
-
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #6c757d;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 12px 20px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-            background-color: #e9ecef;
-            border-color: #dee2e6;
+        .endpoint-card:hover, .api-key-card:hover {
+            box-shadow: var(--shadow-md);
             transform: translateY(-2px);
         }
 
-        .alert {
-            border-radius: 10px;
-            border: none;
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        .card-header-custom {
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            color: var(--gray-700);
         }
 
-        .alert-success {
-            background: var(--success-gradient);
-            color: white;
+        .input-group .btn {
+            border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
         }
 
-        .alert-danger {
-            background: var(--secondary-gradient);
-            color: white;
-        }
-
-        /* 动画效果 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
+        .input-group .btn:first-child {
+            border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+            border-right: none;
         }
     </style>
 </head>
@@ -173,7 +110,7 @@ if (typeof savedForm === 'undefined') {
             <!-- 显示错误消息 -->
             <% if (typeof error !== 'undefined' && error) { %>
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill"></i> <%= error %>
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> <%= error %>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <% } %>
@@ -181,7 +118,7 @@ if (typeof savedForm === 'undefined') {
             <!-- 显示成功消息 -->
             <% if (typeof success !== 'undefined' && success) { %>
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle-fill"></i> <%= success %>
+                    <i class="bi bi-check-circle-fill me-2"></i> <%= success %>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             <% } %>
@@ -197,7 +134,7 @@ if (typeof savedForm === 'undefined') {
                     <input type="text" class="form-control" id="name" name="name" value="<%= savedForm && savedForm.name ? savedForm.name : '自动生成' %>">
                 </div>
 
-                <div class="row mb-3">
+                <div class="row mb-4">
                     <div class="col-md-6">
                         <label for="website" class="form-label"><i class="bi bi-globe"></i> 官方网站</label>
                         <input type="url" class="form-control" id="website" name="website"
@@ -214,13 +151,13 @@ if (typeof savedForm === 'undefined') {
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label"><i class="bi bi-link-45deg"></i> 其他API接口地址</label>
+                <div class="mb-4">
+                    <label class="form-label fw-bold"><i class="bi bi-link-45deg"></i> 其他API接口地址</label>
                     <div class="form-text mb-2">您可以添加多个API接口地址，系统将自动轮询使用。所有密钥都可用于这些接口。</div>
                     <div id="endpointsContainer">
                         <div class="card mb-3 endpoint-card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span class="fw-bold">接口 1</span>
+                            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                <span class="fw-bold"><i class="bi bi-link me-1"></i>接口 1</span>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="defaultEndpoint0" name="defaultEndpoint" value="0" checked>
                                     <label class="form-check-label" for="defaultEndpoint0">默认接口</label>
@@ -249,13 +186,13 @@ if (typeof savedForm === 'undefined') {
                     </button>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label"><i class="bi bi-key"></i> API密钥</label>
+                <div class="mb-4">
+                    <label class="form-label fw-bold"><i class="bi bi-key"></i> API密钥</label>
                     <div class="form-text mb-2">您可以添加多个API密钥，系统将自动轮询使用。所有密钥都用于同一个API接口。</div>
                     <div id="apiKeysContainer">
                         <div class="card mb-3 api-key-card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <span class="fw-bold">密钥 1</span>
+                            <div class="card-header-custom d-flex justify-content-between align-items-center">
+                                <span class="fw-bold"><i class="bi bi-key me-1"></i>密钥 1</span>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="defaultKey0" name="defaultKey" value="0" checked>
                                     <label class="form-check-label" for="defaultKey0">默认密钥</label>
@@ -298,17 +235,17 @@ if (typeof savedForm === 'undefined') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let keyCount = 1; // 从1开始，因为第一个密钥已经存在
-        let endpointCount = 1; // 从1开始，因为第一个接口已经存在
+        let keyCount = 1;
+        let endpointCount = 1;
 
         function addApiKeyField() {
             keyCount++;
             const container = document.getElementById('apiKeysContainer');
             const div = document.createElement('div');
-            div.className = 'card mb-3 api-key-card';
+            div.className = 'card mb-3 api-key-card fade-in-up';
             div.innerHTML = `
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-bold">密钥 ${keyCount}</span>
+                <div class="card-header-custom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-key me-1"></i>密钥 ${keyCount}</span>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="defaultKey${keyCount-1}" name="defaultKey" value="${keyCount-1}">
                         <label class="form-check-label" for="defaultKey${keyCount-1}">默认密钥</label>
@@ -338,10 +275,10 @@ if (typeof savedForm === 'undefined') {
             endpointCount++;
             const container = document.getElementById('endpointsContainer');
             const div = document.createElement('div');
-            div.className = 'card mb-3 endpoint-card';
+            div.className = 'card mb-3 endpoint-card fade-in-up';
             div.innerHTML = `
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-bold">接口 ${endpointCount}</span>
+                <div class="card-header-custom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-link me-1"></i>接口 ${endpointCount}</span>
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="defaultEndpoint${endpointCount-1}" name="defaultEndpoint" value="${endpointCount-1}">
                         <label class="form-check-label" for="defaultEndpoint${endpointCount-1}">默认接口</label>
@@ -373,7 +310,6 @@ if (typeof savedForm === 'undefined') {
                 const card = btn.closest('.api-key-card');
                 const isDefault = card.querySelector('input[name="defaultKey"]').checked;
 
-                // 如果删除的是默认密钥，将第一个密钥设为默认
                 if (isDefault && container.children.length > 1) {
                     const firstCard = container.querySelector('.api-key-card');
                     if (firstCard && firstCard !== card) {
@@ -393,7 +329,6 @@ if (typeof savedForm === 'undefined') {
                 const card = btn.closest('.endpoint-card');
                 const isDefault = card.querySelector('input[name="defaultEndpoint"]').checked;
 
-                // 如果删除的是默认接口，将第一个接口设为默认
                 if (isDefault && container.children.length > 1) {
                     const firstCard = container.querySelector('.endpoint-card');
                     if (firstCard && firstCard !== card) {
@@ -410,7 +345,7 @@ if (typeof savedForm === 'undefined') {
         function updateKeyNumbers() {
             const cards = document.querySelectorAll('.api-key-card');
             cards.forEach((card, index) => {
-                const header = card.querySelector('.card-header span');
+                const header = card.querySelector('.card-header-custom span');
                 if (header) {
                     header.textContent = `密钥 ${index + 1}`;
                 }
@@ -420,7 +355,7 @@ if (typeof savedForm === 'undefined') {
         function updateEndpointNumbers() {
             const cards = document.querySelectorAll('.endpoint-card');
             cards.forEach((card, index) => {
-                const header = card.querySelector('.card-header span');
+                const header = card.querySelector('.card-header-custom span');
                 if (header) {
                     header.textContent = `接口 ${index + 1}`;
                 }
@@ -428,14 +363,12 @@ if (typeof savedForm === 'undefined') {
         }
 
         function updateRemoveButtons() {
-            // 更新密钥删除按钮
             const keyContainer = document.getElementById('apiKeysContainer');
             const keyButtons = keyContainer.querySelectorAll('.api-key-card .btn-outline-danger');
             keyButtons.forEach(btn => {
                 btn.disabled = keyContainer.children.length === 1;
             });
 
-            // 确保只有一个默认密钥被选中
             const defaultKeyCheckboxes = keyContainer.querySelectorAll('input[name="defaultKey"]');
             let hasKeyChecked = false;
             defaultKeyCheckboxes.forEach(checkbox => {
@@ -448,19 +381,16 @@ if (typeof savedForm === 'undefined') {
                 }
             });
 
-            // 如果没有默认密钥被选中，选中第一个
             if (!hasKeyChecked && defaultKeyCheckboxes.length > 0) {
                 defaultKeyCheckboxes[0].checked = true;
             }
 
-            // 更新接口删除按钮
             const endpointContainer = document.getElementById('endpointsContainer');
             const endpointButtons = endpointContainer.querySelectorAll('.endpoint-card .btn-outline-danger');
             endpointButtons.forEach(btn => {
                 btn.disabled = endpointContainer.children.length === 1;
             });
 
-            // 确保只有一个默认接口被选中
             const defaultEndpointCheckboxes = endpointContainer.querySelectorAll('input[name="defaultEndpoint"]');
             let hasEndpointChecked = false;
             defaultEndpointCheckboxes.forEach(checkbox => {
@@ -473,7 +403,6 @@ if (typeof savedForm === 'undefined') {
                 }
             });
 
-            // 如果没有默认接口被选中，选中第一个
             if (!hasEndpointChecked && defaultEndpointCheckboxes.length > 0) {
                 defaultEndpointCheckboxes[0].checked = true;
             }
@@ -505,20 +434,16 @@ if (typeof savedForm === 'undefined') {
     </script>
     
     <script>
-    // 保存表单数据到localStorage
     document.addEventListener('DOMContentLoaded', function() {
-        // 从localStorage恢复表单数据
         const savedFormData = localStorage.getItem('addProviderFormData');
         if (savedFormData) {
             const formData = JSON.parse(savedFormData);
             
-            // 填充表单字段
             if (formData.name) document.getElementById('name').value = formData.name;
             if (formData.url) document.getElementById('url').value = formData.url;
             if (formData.website) document.getElementById('website').value = formData.website;
         }
         
-        // 在表单提交前保存数据
         document.getElementById('addProviderForm').addEventListener('submit', function() {
             const formData = {
                 name: document.getElementById('name').value,

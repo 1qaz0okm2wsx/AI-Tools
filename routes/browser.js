@@ -10,7 +10,7 @@ import { browserService } from '../src/services/browser/index.js';
 import { webConfigService } from '../src/services/webConfig.js';
 import { cookieManager } from '../src/services/cookieManager.js';
 import { requestManager } from '../src/services/requestManager.js';
-import { logger, logCollector, DetailedErrorTypes, getErrorInfo, logSmartError } from '../src/utils/logger.js';
+import { logger, logCollector, DetailedErrorTypes } from '../src/utils/logger.js';
 import { errorHandler } from '../src/utils/errorHandler.js';
 
 const router = express.Router();
@@ -62,7 +62,7 @@ router.post('/v1/browser/chat/completions', async (req, res) => {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      const completionId = uuidv4();
+      uuidv4();
 
       try {
         // 获取锁
@@ -141,7 +141,7 @@ router.post('/v1/browser/chat/completions', async (req, res) => {
                     collectedContent.push(content);
                   }
                 }
-              } catch (e) {
+              } catch (_e) {
                 // 忽略解析错误
               }
             }
@@ -307,43 +307,65 @@ router.delete('/api/browser/config/:domain', async (req, res) => {
 router.post('/api/browser/open', async (req, res) => {
   try {
     const { site } = req.body;
-    
+
     if (!site) {
       return res.status(400).json({
         error: '网站域名不能为空'
       });
     }
-    
+
+    // 先尝试初始化浏览器连接
+    try {
+      await browserService.initialize();
+    } catch (initError) {
+      logger.error('浏览器初始化失败:', initError);
+      return res.status(503).json({
+        status: 'error',
+        error: '浏览器连接失败',
+        message: /** @type {Error} */ (initError).message
+      });
+    }
+
+    // 检查浏览器是否已连接
+    const health = await browserService.healthCheck();
+    if (!health.connected) {
+      return res.status(503).json({
+        status: 'error',
+        error: '浏览器未连接',
+        message: health.error || '请运行"启动Chrome.bat"启动Chrome远程调试模式'
+      });
+    }
+
     const page = browserService.getPage();
     const siteConfig = webConfigService.getSiteConfig(site);
-    
+
     if (!siteConfig) {
       return res.status(404).json({
         error: `未找到网站配置：${site}`
       });
     }
-    
+
     const targetUrl = siteConfig.url || `https://${site}`;
-    
+
     logger.info(`正在打开网站: ${targetUrl}`);
-    
+
     // 先尝试加载cookies
     const cookies = await cookieManager.loadCookies(site);
-    
+
     if (cookies && cookies.length > 0) {
       await page.setCookie(...cookies);
       logger.info(`[COOKIE] 已加载 ${cookies.length} 个cookies`);
     }
-    
+
     // 打开网站
-    await page.goto(targetUrl, { 
+    await page.goto(targetUrl, {
       waitUntil: 'networkidle2',
       timeout: 30000
     });
-    
+
     // 等待页面加载
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // 保存cookies
     const currentCookies = await page.cookies();
     await cookieManager.saveCookies(site, currentCookies);

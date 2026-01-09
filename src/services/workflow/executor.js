@@ -9,22 +9,46 @@ import { extractorRegistry } from '../extractors/index.js';
 import { logger } from '../../utils/logger.js';
 
 export class WorkflowExecutor {
+  /**
+   * @param {any} page
+   * @param {boolean} stealthMode
+   * @param {(() => boolean) | null} stopChecker
+   * @param {any} extractor
+   */
   constructor(page, stealthMode = false, stopChecker = null, extractor = null) {
+    /** @type {any} */
     this.page = page;
+    /** @type {boolean} */
     this.stealthMode = stealthMode;
+    /** @type {ElementFinder} */
     this.finder = new ElementFinder(page);
+    /** @type {() => boolean} */
     this.shouldStop = stopChecker || (() => false);
+    /** @type {any} */
     this.extractor = extractor || extractorRegistry.getDefault();
 
+    /** @type {string} */
     this.completionId = this.generateId();
 
     logger.debug(`[WORKFLOW] 使用提取器: ${this.extractor.getId()}`);
   }
 
+  /**
+   * @returns {string}
+   */
   generateId() {
     return `chatcmpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
+  /**
+   * @param {string} action
+   * @param {string} selector
+   * @param {string} targetKey
+   * @param {string} value
+   * @param {boolean} optional
+   * @param {{ prompt?: string } | null} context
+   * @returns {Promise<void>}
+   */
   async executeStep(action, selector, targetKey, value, optional, context) {
     if (this.shouldStop()) {
       logger.debug(`步骤 ${action} 跳过（已取消）`);
@@ -47,28 +71,34 @@ export class WorkflowExecutor {
           await this.executeClick(selector, targetKey, optional);
           break;
 
-        case 'FILL_INPUT':
+        case 'FILL_INPUT': {
           const prompt = context?.prompt || '';
           await this.executeFill(selector, prompt, targetKey, optional);
           break;
+        }
 
         case 'STREAM_WAIT':
-        case 'STREAM_OUTPUT':
+        case 'STREAM_OUTPUT': {
           const userInput = context?.prompt || '';
           await this.executeStream(selector, userInput);
           break;
+        }
 
         default:
           logger.debug(`未知动作: ${action}`);
       }
-    } catch (error) {
-      logger.error(`步骤执行失败 [${action}]: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.error(`步骤执行失败 [${action}]: ${error?.message || String(error)}`);
       if (!optional) {
         throw error;
       }
     }
   }
 
+  /**
+   * @param {number} seconds
+   * @returns {Promise<void>}
+   */
   async executeWait(seconds) {
     const startTime = Date.now();
     const duration = seconds * 1000;
@@ -81,6 +111,10 @@ export class WorkflowExecutor {
     }
   }
 
+  /**
+   * @param {string} key
+   * @returns {Promise<void>}
+   */
   async executeKeypress(key) {
     if (this.shouldStop()) {
       return;
@@ -90,6 +124,12 @@ export class WorkflowExecutor {
     await this.smartDelay(0.1, 0.2);
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} targetKey
+   * @param {boolean} optional
+   * @returns {Promise<void>}
+   */
   async executeClick(selector, targetKey, optional) {
     if (this.shouldStop()) {
       return;
@@ -112,8 +152,8 @@ export class WorkflowExecutor {
           webConfigService.getBrowserConstant('ACTION_DELAY_MIN'),
           webConfigService.getBrowserConstant('ACTION_DELAY_MAX')
         );
-      } catch (error) {
-        logger.debug(`点击异常: ${error.message}`);
+      } catch (/** @type {any} */ error) {
+        logger.debug(`点击异常: ${error?.message || String(error)}`);
         if (targetKey === 'send_btn') {
           await this.executeKeypress('Enter');
         }
@@ -125,6 +165,13 @@ export class WorkflowExecutor {
     }
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} text
+   * @param {string} targetKey
+   * @param {boolean} optional
+   * @returns {Promise<void>}
+   */
   async executeFill(selector, text, targetKey, optional) {
     if (this.shouldStop()) {
       return;
@@ -151,6 +198,10 @@ export class WorkflowExecutor {
     await this.verifyAndFix(element, text);
   }
 
+  /**
+   * @param {any} element
+   * @returns {Promise<void>}
+   */
   async clearInput(element) {
     try {
       await element.click();
@@ -158,11 +209,16 @@ export class WorkflowExecutor {
       await this.page.keyboard.press('A');
       await this.page.keyboard.up('Control');
       await this.page.keyboard.press('Backspace');
-    } catch (error) {
-      logger.debug(`清空输入框失败: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.debug(`清空输入框失败: ${error?.message || String(error)}`);
     }
   }
 
+  /**
+   * @param {any} element
+   * @param {string} text
+   * @returns {Promise<boolean>}
+   */
   async chunkedInput(element, text) {
     const CHUNK_SIZE = 30000;
     const totalLen = text.length;
@@ -199,12 +255,16 @@ export class WorkflowExecutor {
     return true;
   }
 
+  /**
+   * @param {any} element
+   * @returns {Promise<void>}
+   */
   async physicalActivate(element) {
     try {
       await element.focus();
 
       // 检测是否为 contenteditable
-      const isContentEditable = await element.evaluate(el => {
+      const isContentEditable = await element.evaluate((/** @type {any} */ el) => {
         return el.isContentEditable || el.getAttribute('contenteditable') === 'true';
       });
 
@@ -219,11 +279,16 @@ export class WorkflowExecutor {
       }
 
       await this.delay(100);
-    } catch (error) {
-      logger.debug(`物理激活异常（可忽略）: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.debug(`物理激活异常（可忽略）: ${error?.message || String(error)}`);
     }
   }
 
+  /**
+   * @param {any} element
+   * @param {string} originalText
+   * @returns {Promise<void>}
+   */
   async verifyAndFix(element, originalText) {
     const expected = originalText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const expectedLen = expected.length;
@@ -231,7 +296,7 @@ export class WorkflowExecutor {
     const expectedCore = expected.replace(/\s+/g, '');
 
     // 检测是否为富文本编辑器
-    const isRichEditor = await element.evaluate(el => {
+    const isRichEditor = await element.evaluate((/** @type {any} */ el) => {
       return el.isContentEditable || el.getAttribute('contenteditable') === 'true';
     });
 
@@ -305,9 +370,13 @@ export class WorkflowExecutor {
     throw new Error('input_mismatch');
   }
 
+  /**
+   * @param {any} element
+   * @returns {Promise<string>}
+   */
   async readInputFullText(element) {
     try {
-      const text = await element.evaluate(el => {
+      const text = await element.evaluate((/** @type {any} */ el) => {
         const tag = el.tagName?.toLowerCase();
         if (tag === 'textarea' || tag === 'input') {
           return el.value || '';
@@ -318,11 +387,15 @@ export class WorkflowExecutor {
         return el.textContent || '';
       });
       return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       return '';
     }
   }
 
+  /**
+   * @param {string} text
+   * @returns {string}
+   */
   normalizeForCompare(text) {
     // 统一换行符
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -332,12 +405,17 @@ export class WorkflowExecutor {
     return text.trim();
   }
 
+  /**
+   * @param {string} selector
+   * @param {string} userInput
+   * @returns {Promise<void>}
+   */
   async executeStream(selector, userInput) {
     const monitor = new StreamMonitor(
       this.page,
       {
-        packChunk: (content, id) => this.packChunk(content, id),
-        packFinish: (id) => this.packFinish(id)
+        packChunk: (/** @type {string} */ content, /** @type {string} */ id) => this.packChunk(content, id),
+        packFinish: (/** @type {string} */ id) => this.packFinish(id)
       },
       this.shouldStop
     );
@@ -346,9 +424,15 @@ export class WorkflowExecutor {
 
     for await (const chunk of chunks) {
       // chunk 已经是格式化的 SSE 数据
+      chunk;
     }
   }
 
+  /**
+   * @param {string} content
+   * @param {string} completionId
+   * @returns {string}
+   */
   packChunk(content, completionId) {
     const data = {
       id: completionId,
@@ -364,6 +448,10 @@ export class WorkflowExecutor {
     return `data: ${JSON.stringify(data)}\n\n`;
   }
 
+  /**
+   * @param {string} completionId
+   * @returns {string}
+   */
   packFinish(completionId) {
     const data = {
       id: completionId,
@@ -379,6 +467,10 @@ export class WorkflowExecutor {
     return `data: ${JSON.stringify(data)}\n\ndata: [DONE]\n\n`;
   }
 
+  /**
+   * @param {any} element
+   * @returns {Promise<void>}
+   */
   async simulateMouseMove(element) {
     try {
       const box = await element.boundingBox();
@@ -389,11 +481,16 @@ export class WorkflowExecutor {
 
       await this.page.mouse.move(x, y, { steps: 10 });
       await this.smartDelay(0.1, 0.25);
-    } catch (error) {
-      logger.debug(`模拟鼠标移动失败: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.debug(`模拟鼠标移动失败: ${error?.message || String(error)}`);
     }
   }
 
+  /**
+   * @param {number} min
+   * @param {number} max
+   * @returns {Promise<void>}
+   */
   async smartDelay(min, max) {
     if (!this.stealthMode) {
       return;
@@ -406,6 +503,10 @@ export class WorkflowExecutor {
     await this.delay(seconds);
   }
 
+  /**
+   * @param {number} seconds
+   * @returns {Promise<void>}
+   */
   delay(seconds) {
     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
   }

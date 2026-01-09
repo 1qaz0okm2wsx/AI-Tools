@@ -6,6 +6,12 @@ import { webConfigService } from './webConfig.js';
 import { logger } from '../utils/logger.js';
 
 class CachedElement {
+  /**
+   * @param {any} element
+   * @param {string} selector
+   * @param {number} cachedAt
+   * @param {string} contentHash
+   */
   constructor(element, selector, cachedAt, contentHash) {
     this.element = element;
     this.selector = selector;
@@ -13,6 +19,10 @@ class CachedElement {
     this.contentHash = contentHash;
   }
 
+  /**
+   * @param {number} [maxAge]
+   * @returns {boolean}
+   */
   isStale(maxAge) {
     const age = Date.now() / 1000 - this.cachedAt;
     const maxAgeSeconds = maxAge || webConfigService.getBrowserConstant('ELEMENT_CACHE_MAX_AGE') || 5.0;
@@ -21,11 +31,15 @@ class CachedElement {
 }
 
 class ElementFinder {
+  /**
+   * @param {any} page
+   */
   constructor(page) {
     this.page = page;
     this.cache = new Map();
 
     // 回退选择器配置
+    /** @type {{ [key: string]: string[] }} */
     this.fallbackSelectors = {
       input_box: [
         'textarea',
@@ -47,22 +61,26 @@ class ElementFinder {
     };
   }
 
+  /**
+   * @param {any} element
+   * @returns {Promise<string>}
+   */
   async computeElementHash(element) {
     try {
       const identityParts = [];
       const stableAttrs = ['id', 'data-testid', 'data-message-id', 'data-turn-id'];
 
       for (const attr of stableAttrs) {
-        const value = await element.evaluate((el, attr) => el.getAttribute(attr), attr);
+        const value = await element.evaluate((/** @type {any} */ el, /** @type {any} */ attr) => el.getAttribute(attr), attr);
         if (value) {
           identityParts.push(`${attr}=${value}`);
         }
       }
 
-      const tag = await element.evaluate(el => el.tagName);
+      const tag = await element.evaluate((/** @type {any} */ el) => el.tagName);
       identityParts.push(`tag=${tag}`);
 
-      const classes = await element.evaluate(el => {
+      const classes = await element.evaluate((/** @type {any} */ el) => {
         const cls = el.className;
         return cls ? cls.split(' ').slice(0, 2).join('.') : '';
       });
@@ -81,6 +99,10 @@ class ElementFinder {
     }
   }
 
+  /**
+   * @param {string} str
+   * @returns {string}
+   */
   hashString(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -91,6 +113,10 @@ class ElementFinder {
     return Math.abs(hash).toString(16).slice(0, 8);
   }
 
+  /**
+   * @param {CachedElement} cached
+   * @returns {Promise<boolean>}
+   */
   async validateCachedElement(cached) {
     if (cached.isStale()) {
       return false;
@@ -113,6 +139,11 @@ class ElementFinder {
     }
   }
 
+  /**
+   * @param {string} selector
+   * @param {number} [timeout]
+   * @returns {Promise<any>}
+   */
   async find(selector, timeout) {
     const DEFAULT_TIMEOUT = (webConfigService.getBrowserConstant('DEFAULT_ELEMENT_TIMEOUT') || 3) * 1000;
     const timeoutMs = timeout || DEFAULT_TIMEOUT;
@@ -149,10 +180,12 @@ class ElementFinder {
     return element;
   }
 
-  async findAll(selector, timeout) {
-    const DEFAULT_TIMEOUT = (webConfigService.getBrowserConstant('DEFAULT_ELEMENT_TIMEOUT') || 3) * 1000;
-    const timeoutMs = timeout || DEFAULT_TIMEOUT;
-
+  /**
+   * @param {string} selector
+   * @param {number} [_timeout]
+   * @returns {Promise<any[]>}
+   */
+  async findAll(selector, _timeout) {
     try {
       return await this.page.$$(selector);
     } catch (error) {
@@ -160,6 +193,12 @@ class ElementFinder {
     }
   }
 
+  /**
+   * @param {string} primarySelector
+   * @param {string} targetKey
+   * @param {number} [timeout]
+   * @returns {Promise<any>}
+   */
   async findWithFallback(primarySelector, targetKey, timeout) {
     const DEFAULT_TIMEOUT = (webConfigService.getBrowserConstant('DEFAULT_ELEMENT_TIMEOUT') || 3) * 1000;
     const timeoutMs = timeout || DEFAULT_TIMEOUT;
@@ -173,6 +212,7 @@ class ElementFinder {
     }
 
     // 回退选择器
+    /** @type {string[]} */
     const fallbackList = this.fallbackSelectors[targetKey] || [];
     if (fallbackList.length === 0) {
       return null;
@@ -196,6 +236,9 @@ class ElementFinder {
     this.cache.clear();
   }
 
+  /**
+   * @param {string} selector
+   */
   removeFromCache(selector) {
     this.cache.delete(selector);
   }

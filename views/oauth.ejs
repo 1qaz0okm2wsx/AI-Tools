@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth管理 - AI模型管理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .provider-card {
+            transition: all var(--transition-base);
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .provider-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .provider-card.connected {
+            border-color: var(--success-color);
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+        .provider-card.expired {
+            border-color: var(--danger-color);
+            background-color: rgba(239, 68, 68, 0.05);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .status-dot.connected { background-color: var(--success-color); }
+        .status-dot.expired { background-color: var(--danger-color); }
+        .status-dot.disconnected { background-color: var(--gray-400); }
+        .token-expiry {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+        .token-expiry.warning { color: #f59e0b; }
+        .token-expiry.danger { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-cpu"></i> AI模型管理工具
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house"></i> 提供商列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/browser"><i class="bi bi-browser-chrome"></i> 浏览器自动化</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/oauth"><i class="bi bi-shield-lock"></i> OAuth管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs"><i class="bi bi-journal-text"></i> 操作日志</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <!-- 统计卡片 -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> OAuth统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>总提供商数</span>
+                            <strong id="stat-total">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span><span class="text-success">●</span> 已授权</span>
+                            <strong id="stat-active" class="text-success">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span><span class="text-danger">●</span> 已过期</span>
+                            <strong id="stat-expired" class="text-danger">0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="card">
+                    <div class="card-body">
+                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#addProviderModal">
+                            <i class="bi bi-plus-lg"></i> 添加提供商
+                        </button>
+                        <button class="btn btn-outline-info w-100" onclick="refreshProviders()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <!-- 提供商列表 -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-grid"></i> OAuth提供商</h5>
+                        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="搜索..." style="width: 200px;">
+                    </div>
+                    <div class="card-body">
+                        <div id="providersList" class="row g-3">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加提供商模态框 -->
+    <div class="modal fade" id="addProviderModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加OAuth提供商</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addProviderForm">
+                        <div class="mb-3">
+                            <label class="form-label">提供商名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="providerName" placeholder="例如: google, github, claude" required>
+                            <small class="text-muted">使用唯一的标识符，建议使用小写字母</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">授权URL <span class="text-danger">*</span></label>
+                            <input type="url" class="form-control" id="authUrl" placeholder="https://accounts.example.com/o/oauth2/v2/auth" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Token URL <span class="text-danger">*</span></label>
+                            <input type="url" class="form-control" id="tokenUrl" placeholder="https://oauth2.example.com/token" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="clientId" placeholder="your-client-id" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client Secret <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="clientSecret" placeholder="your-client-secret" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">重定向URI <span class="text-danger">*</span></label>
+                            <input type="url" class="form-control" id="redirectUri" placeholder="http://localhost:3000/api/oauth/callback/google" required>
+                            <small class="text-muted">必须与在OAuth提供商处注册的回调URL完全一致</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Scope（可选）</label>
+                            <input type="text" class="form-control" id="scope" placeholder="openid profile email">
+                            <small class="text-muted">多个scope用空格分隔</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="addProvider()">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑提供商模态框 -->
+    <div class="modal fade" id="editProviderModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil"></i> 编辑提供商: <span id="editProviderName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProviderForm">
+                        <div class="mb-3">
+                            <label class="form-label">授权URL</label>
+                            <input type="url" class="form-control" id="editAuthUrl">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Token URL</label>
+                            <input type="url" class="form-control" id="editTokenUrl">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client ID</label>
+                                <input type="text" class="form-control" id="editClientId">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Client Secret</label>
+                                <input type="password" class="form-control" id="editClientSecret">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">重定向URI</label>
+                            <input type="url" class="form-control" id="editRedirectUri">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Scope</label>
+                            <input type="text" class="form-control" id="editScope">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="updateProvider()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentProviders = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshProviders();
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                filterProviders(e.target.value);
+            });
+        });
+
+        async function refreshProviders() {
+            try {
+                const response = await fetch('/api/oauth/providers');
+                const data = await response.json();
+                currentProviders = data.providers;
+
+                renderProviders();
+                updateStats();
+            } catch (error) {
+                console.error('Failed to load providers:', error);
+                alert('加载失败: ' + error.message);
+            }
+        }
+
+        function renderProviders(filterText = '') {
+            const container = document.getElementById('providersList');
+            container.innerHTML = '';
+
+            for (const [name, provider] of Object.entries(currentProviders)) {
+                if (filterText && !name.toLowerCase().includes(filterText.toLowerCase())) {
+                    continue;
+                }
+
+                const col = document.createElement('div');
+                col.className = 'col-md-4';
+
+                const statusClass = provider.hasTokens ? (provider.hasValidTokens ? 'connected' : 'expired') : '';
+                const statusText = provider.hasTokens ? (provider.hasValidTokens ? '已授权' : '已过期') : '未授权';
+                const statusDot = provider.hasTokens ? (provider.hasValidTokens ? 'connected' : 'expired') : 'disconnected';
+
+                col.innerHTML = `
+                    <div class="card provider-card ${statusClass}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title mb-0"><i class="bi bi-link-45deg"></i> ${name}</h6>
+                                <span class="status-badge">
+                                    <span class="status-dot ${statusDot}"></span>
+                                    <small>${statusText}</small>
+                                </span>
+                            </div>
+                            <div class="token-expiry" id="expiry-${name}">
+                                ${provider.hasTokens ? '已获取Token' : '未授权'}
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex gap-2">
+                                ${!provider.hasValidTokens ? `
+                                    <button class="btn btn-sm btn-primary flex-grow-1" onclick="authorize('${name}')">
+                                        <i class="bi bi-link"></i> 授权
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-sm btn-outline-secondary" onclick="editProvider('${name}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                ${provider.hasTokens ? `
+                                    <button class="btn btn-sm btn-outline-warning" onclick="refreshToken('${name}')">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="revokeToken('${name}')">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteProvider('${name}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(col);
+
+                if (provider.hasTokens) {
+                    loadTokenExpiry(name);
+                }
+            }
+        }
+
+        async function loadTokenExpiry(name) {
+            try {
+                const response = await fetch(`/api/oauth/tokens/${name}`);
+                const data = await response.json();
+
+                if (data.tokens) {
+                    const expiryEl = document.getElementById(`expiry-${name}`);
+                    if (data.tokens.expiresAt) {
+                        const expiresAt = new Date(data.tokens.expiresAt);
+                        const now = new Date();
+                        const diff = expiresAt - now;
+
+                        let text, className = '';
+
+                        if (diff < 0) {
+                            text = '已过期';
+                            className = 'danger';
+                        } else if (diff < 5 * 60 * 1000) {
+                            text = `${Math.floor(diff / 1000 / 60)}分钟后过期`;
+                            className = 'warning';
+                        } else if (diff < 60 * 60 * 1000) {
+                            text = `${Math.floor(diff / 1000 / 60)}分钟后过期`;
+                        } else {
+                            text = expiresAt.toLocaleString('zh-CN');
+                        }
+
+                        expiryEl.textContent = text;
+                        expiryEl.className = `token-expiry ${className}`;
+                    }
+                }
+            } catch (error) {
+                console.error(`Failed to load token expiry for ${name}:`, error);
+            }
+        }
+
+        function filterProviders(text) {
+            renderProviders(text);
+        }
+
+        async function addProvider() {
+            const name = document.getElementById('providerName').value.trim();
+            const config = {
+                authUrl: document.getElementById('authUrl').value.trim(),
+                tokenUrl: document.getElementById('tokenUrl').value.trim(),
+                clientId: document.getElementById('clientId').value.trim(),
+                clientSecret: document.getElementById('clientSecret').value.trim(),
+                redirectUri: document.getElementById('redirectUri').value.trim(),
+                scope: document.getElementById('scope').value.trim()
+            };
+
+            if (!name || !config.authUrl || !config.tokenUrl || !config.clientId || !config.clientSecret || !config.redirectUri) {
+                alert('请填写所有必填字段');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/oauth/providers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, config })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    bootstrap.Modal.getInstance(document.getElementById('addProviderModal')).hide();
+                    document.getElementById('addProviderForm').reset();
+                    refreshProviders();
+                } else {
+                    alert('添加失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('添加失败: ' + error.message);
+            }
+        }
+
+        async function editProvider(name) {
+            try {
+                const response = await fetch(`/api/oauth/providers/${name}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('editProviderName').textContent = name;
+                    document.getElementById('editAuthUrl').value = data.provider.authUrl || '';
+                    document.getElementById('editTokenUrl').value = data.provider.tokenUrl || '';
+                    document.getElementById('editClientId').value = data.provider.clientId || '';
+                    document.getElementById('editClientSecret').value = data.provider.clientSecret || '';
+                    document.getElementById('editRedirectUri').value = data.provider.redirectUri || '';
+                    document.getElementById('editScope').value = data.provider.scope || '';
+
+                    const modal = new bootstrap.Modal(document.getElementById('editProviderModal'));
+                    modal.show();
+                }
+            } catch (error) {
+                alert('加载失败: ' + error.message);
+            }
+        }
+
+        async function updateProvider() {
+            const name = document.getElementById('editProviderName').textContent;
+            const config = {
+                authUrl: document.getElementById('editAuthUrl').value.trim(),
+                tokenUrl: document.getElementById('editTokenUrl').value.trim(),
+                clientId: document.getElementById('editClientId').value.trim(),
+                clientSecret: document.getElementById('editClientSecret').value.trim(),
+                redirectUri: document.getElementById('editRedirectUri').value.trim(),
+                scope: document.getElementById('editScope').value.trim()
+            };
+
+            try {
+                const response = await fetch(`/api/oauth/providers/${name}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    bootstrap.Modal.getInstance(document.getElementById('editProviderModal')).hide();
+                    refreshProviders();
+                } else {
+                    alert('更新失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('更新失败: ' + error.message);
+            }
+        }
+
+        async function deleteProvider(name) {
+            if (!confirm(`确定要删除提供商 "${name}" 吗？`)) return;
+
+            try {
+                const response = await fetch(`/api/oauth/providers/${name}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    refreshProviders();
+                } else {
+                    alert('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        async function authorize(name) {
+            try {
+                const response = await fetch(`/api/oauth/authorize/${name}`);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    window.open(data.authUrl, '_blank');
+                } else {
+                    alert('生成授权URL失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('生成授权URL失败: ' + error.message);
+            }
+        }
+
+        async function refreshToken(name) {
+            try {
+                const response = await fetch(`/api/oauth/tokens/${name}/refresh`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    refreshProviders();
+                } else {
+                    alert('刷新Token失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('刷新Token失败: ' + error.message);
+            }
+        }
+
+        async function revokeToken(name) {
+            if (!confirm(`确定要撤销 "${name}" 的Token吗？`)) return;
+
+            try {
+                const response = await fetch(`/api/oauth/tokens/${name}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    refreshProviders();
+                } else {
+                    alert('撤销Token失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('撤销Token失败: ' + error.message);
+            }
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/oauth/stats');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('stat-total').textContent = data.stats.totalProviders;
+                    document.getElementById('stat-active').textContent = data.stats.activeTokens;
+                    document.getElementById('stat-expired').textContent = data.stats.expiredTokens;
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // 定期刷新Token过期时间
+        setInterval(() => {
+            for (const name of Object.keys(currentProviders)) {
+                const card = document.querySelector(`#expiry-${name}`);
+                if (card) {
+                    loadTokenExpiry(name);
+                }
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

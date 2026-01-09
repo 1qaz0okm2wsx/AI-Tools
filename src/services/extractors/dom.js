@@ -12,9 +12,15 @@ export class DOMExtractor extends BaseExtractor {
     this.name = 'DOM Mode Extractor';
   }
 
+  /**
+   * @param {any} page
+   * @param {string} selector
+   * @returns {Promise<string | null>}
+   */
   async extract(page, selector) {
     try {
-      const result = await page.evaluate(sel => {
+      const result = await page.evaluate((/** @type {string} */ sel) => {
+        // eslint-disable-next-line no-undef
         const element = document.querySelector(sel);
         if (!element) {
           return { success: false, text: '', error: 'Element not found' };
@@ -22,7 +28,9 @@ export class DOMExtractor extends BaseExtractor {
 
         return {
           success: true,
+          // @ts-ignore - Browser context code
           text: element.innerText || element.textContent || '',
+          // @ts-ignore - Browser context code
           html: element.outerHTML
         };
       }, selector);
@@ -33,25 +41,33 @@ export class DOMExtractor extends BaseExtractor {
       }
 
       return result.text;
-    } catch (error) {
-      logger.error(`[DOM] 提取异常: ${error.message}`);
+    } catch (/** @type {any} */ error) {
+      logger.error(`[DOM] 提取异常: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
 
+  /**
+   * @param {any} page
+   * @param {string} selector
+   * @returns {Promise<string[]>}
+   */
   async extractMultiple(page, selector) {
     try {
-      const results = await page.evaluate(sel => {
+      const results = await page.evaluate((/** @type {string} */ sel) => {
+        // eslint-disable-next-line no-undef
         const elements = document.querySelectorAll(sel);
         return Array.from(elements).map(el => ({
+          // @ts-ignore - Browser context code
           text: el.innerText || el.textContent || '',
+          // @ts-ignore - Browser context code
           html: el.outerHTML
         }));
       }, selector);
 
-      return results.map(r => r.text);
-    } catch (error) {
-      logger.error(`[DOM] 批量提取异常: ${error.message}`);
+      return results.map((/** @type {{ text: string }} */ r) => r.text);
+    } catch (/** @type {any} */ error) {
+      logger.error(`[DOM] 批量提取异常: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }

@@ -14,12 +14,20 @@ class EncryptionService {
     this.saltLength = 64;
     this.tagLength = 16;
     
-    // 从环境变量获取密钥，如果没有则生成警告
+    // 从环境变量获取密钥
     this.secretKey = process.env.COOKIE_ENCRYPTION_KEY;
     
     if (!this.secretKey) {
-      logger.warn('[ENCRYPTION] ⚠️ 未设置 COOKIE_ENCRYPTION_KEY 环境变量，使用默认密钥（不安全）');
-      this.secretKey = 'default-insecure-key-please-change-in-production';
+      const errorMsg = '❌ 安全错误: 未设置 COOKIE_ENCRYPTION_KEY 环境变量！请参考 .env.example 文件配置加密密钥。';
+      logger.error('[ENCRYPTION] ' + errorMsg);
+      throw new Error(errorMsg + ' 运行以下命令生成密钥: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    }
+    
+    // 验证密钥格式（必须是64个十六进制字符）
+    if (!/^[a-f0-9]{64}$/i.test(this.secretKey)) {
+      const errorMsg = '❌ 安全错误: COOKIE_ENCRYPTION_KEY 格式无效！必须是64个十六进制字符（32字节）。';
+      logger.error('[ENCRYPTION] ' + errorMsg);
+      throw new Error(errorMsg + ' 运行以下命令生成有效密钥: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
     }
   }
 

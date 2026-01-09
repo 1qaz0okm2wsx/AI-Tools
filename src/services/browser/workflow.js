@@ -30,13 +30,12 @@ export class BrowserWorkflow {
 
   /**
    * @param {any[]} messages
-   * @param {boolean} stream
    */
-  async *executeWorkflow(messages, stream = true) {
+  async *executeWorkflow(messages) {
     const page = this.connection.getPage();
 
     // 验证输入
-    const { isValid, error, sanitized } = this.validateMessages(messages);
+    const { isValid, error } = this.validateMessages(messages);
     if (!isValid) {
       yield this.packError(`无效请求: ${error}`, 'invalid_request_error', 'invalid_messages');
       yield this.packFinish();

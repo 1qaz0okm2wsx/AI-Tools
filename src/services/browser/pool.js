@@ -4,19 +4,19 @@
 
 import puppeteer from 'puppeteer';
 import { logger } from '../../utils/logger.js';
-import configService from '../config/index.js';
+import browserConfigLoader from './config-loader.js';
 import { webConfigService } from '../webConfig.js';
 
 export class BrowserPool {
   constructor() {
-    const browserConfig = configService.getBrowserConfig();
-    this.maxInstances = browserConfig.pool.maxInstances;
+    const browserConfig = browserConfigLoader.getBrowserConfig();
+    this.maxInstances = browserConfig?.pool?.maxInstances || 1;
     this.pool = new Map(); // 存储浏览器实例
     this.activeConnections = new Map(); // 存储活跃连接
     this.instanceCounter = 0; // 实例计数器
     this.cleanupInterval = null;
-    this.idleTimeout = browserConfig.pool.idleTimeout; // 从配置读取
-    this.acquireTimeout = browserConfig.pool.acquireTimeout; // 从配置读取
+    this.idleTimeout = browserConfig?.pool?.idleTimeout || 600000; // 从配置读取
+    this.acquireTimeout = browserConfig?.pool?.acquireTimeout || 3000; // 从配置读取
   }
 
   /**
@@ -70,9 +70,10 @@ export class BrowserPool {
   async createInstance() {
     const instanceId = `browser-${++this.instanceCounter}`;
 
-    try {
-      const port = process.env.BROWSER_PORT || webConfigService.getBrowserConstant('DEFAULT_PORT') || 9222;
+    const port = process.env.BROWSER_PORT || webConfigService.getBrowserConstant('DEFAULT_PORT') || 9222;
 
+    // 尝试连接，如果失败则尝试启动/等待 Chrome
+    try {
       const browser = await puppeteer.connect({
         browserURL: `http://127.0.0.1:${port}`,
         defaultViewport: null
@@ -89,8 +90,38 @@ export class BrowserPool {
 
       return { id: instanceId, browser };
     } catch (error) {
-      logger.error(`[POOL] 创建浏览器实例失败:`, error);
-      throw error;
+      logger.warn(`[POOL] 直接连接 Chrome 失败: ${error?.message || String(error)}，尝试启动/等待 Chrome (端口: ${port})`);
+
+      // 延迟并尝试启动/等待 Chrome 可用
+      try {
+        const { ensureBrowserReady } = await import('../../utils/browserLauncher.js');
+        const result = await ensureBrowserReady({ port: Number(port), autoLaunch: true, maxWait: 30000 });
+
+        if (!result.success) {
+          logger.error(`[POOL] 启动/等待 Chrome 失败: ${result.error || 'unknown'}`);
+          throw error;
+        }
+
+        // 重试连接
+        const browser = await puppeteer.connect({
+          browserURL: `http://127.0.0.1:${port}`,
+          defaultViewport: null
+        });
+
+        this.pool.set(instanceId, {
+          id: instanceId,
+          browser: browser,
+          createdAt: Date.now(),
+          lastUsed: Date.now()
+        });
+
+        logger.info(`[POOL] 创建新浏览器实例（重试成功）: ${instanceId}, 当前池大小: ${this.pool.size}`);
+
+        return { id: instanceId, browser };
+      } catch (/** @type {any} */ innerError) {
+        logger.error(`[POOL] 创建浏览器实例失败（含启动重试）: ${innerError?.message || String(innerError)}`);
+        throw innerError;
+      }
     }
   }
 

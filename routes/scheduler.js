@@ -5,6 +5,7 @@
 import express from 'express';
 import scheduler from '../scheduler.js';
 import { logOperation } from '../db_init.js';
+import { logger } from '../src/utils/logger.js';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get('/scheduler', (req, res) => {
             }
         });
     } catch (error) {
-        console.error('获取定时任务状态失败:', error);
+        logger.error('获取定时任务状态失败:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -40,7 +41,7 @@ router.post('/scheduler/start', (req, res) => {
             message: '定时任务调度器已启动'
         });
     } catch (error) {
-        console.error('启动调度器失败:', error);
+        logger.error('启动调度器失败:', error);
 
         // 记录错误日志
         logOperation(global.db, 'START_SCHEDULER', 'system', null, 'system',
@@ -67,7 +68,7 @@ router.post('/scheduler/stop', (req, res) => {
             message: '定时任务调度器已停止'
         });
     } catch (error) {
-        console.error('停止调度器失败:', error);
+        logger.error('停止调度器失败:', error);
 
         // 记录错误日志
         logOperation(global.db, 'STOP_SCHEDULER', 'system', null, 'system',
@@ -94,7 +95,7 @@ router.post('/scheduler/execute/model-detection', async (req, res) => {
             message: '模型检测已执行'
         });
     } catch (error) {
-        console.error('手动执行模型检测失败:', error);
+        logger.error('手动执行模型检测失败:', error);
 
         // 记录错误日志
         logOperation(global.db, 'MANUAL_DETECT_MODELS', 'system', null, 'system',
@@ -121,7 +122,7 @@ router.post('/scheduler/execute/health-check', async (req, res) => {
             message: '健康检查已执行'
         });
     } catch (error) {
-        console.error('手动执行健康检查失败:', error);
+        logger.error('手动执行健康检查失败:', error);
 
         // 记录错误日志
         logOperation(global.db, 'MANUAL_HEALTH_CHECK', 'system', null, 'system',
@@ -148,7 +149,7 @@ router.post('/scheduler/execute/log-cleanup', async (req, res) => {
             message: '日志清理已执行'
         });
     } catch (error) {
-        console.error('手动执行日志清理失败:', error);
+        logger.error('手动执行日志清理失败:', error);
 
         // 记录错误日志
         logOperation(global.db, 'MANUAL_LOG_CLEANUP', 'system', null, 'system',
@@ -167,7 +168,7 @@ router.get('/api/scheduler/status', (req, res) => {
         const tasksStatus = scheduler.getTasksStatus();
         res.json(tasksStatus);
     } catch (error) {
-        console.error('获取定时任务状态失败:', error);
+        logger.error('获取定时任务状态失败:', error);
         res.status(500).json({ error: error.message });
     }
 });
